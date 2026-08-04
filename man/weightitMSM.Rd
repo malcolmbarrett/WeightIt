@@ -41,16 +41,14 @@ will be used to estimate weights. See \code{\link[=weightit]{weightit()}} for al
 The default is \code{"glm"}, which estimates the weights using generalized
 linear models.}
 
-\item{stabilize}{\code{logical}; whether or not to stabilize the weights.
+\item{stabilize}{whether or not and how to stabilize the weights.
 Stabilizing the weights involves fitting a model predicting treatment at
 each time point from treatment status at prior time points. If \code{TRUE}, a
 fully saturated model will be fit (i.e., all interactions between all
 treatments up to each time point), essentially using the observed treatment
 probabilities in the numerator (for binary and multi-category treatments).
-This may yield an error if some combinations are not observed. Default is
-\code{FALSE}. To manually specify stabilization model formulas, e.g., to specify
-non-saturated models, use \code{num.formula}. With many time points, saturated
-models may be time-consuming or impossible to fit.}
+This may yield an error if some combinations are not observed, and with many time points, saturated
+models may be time-consuming or impossible to fit. Can also be a one-sided formula or list thereof, in which case \code{stabilize} replaces \code{num.formula} (described below). Default is \code{FALSE} for unstabilized weights.}
 
 \item{by}{a string containing the name of the variable in \code{data} for which
 weighting is to be done within categories or a one-sided formula with the
@@ -72,9 +70,7 @@ with previous treatments. See Cole & Hernán (2008) for a discussion of how
 to specify this model; including stabilization factors can change the
 estimand without proper adjustment, and should be done with caution. Can
 also be a list of one-sided formulas, one for each entry of \code{formula.list},
-including any censoring entries. Unless you
-know what you are doing, we recommend setting \code{stabilize = TRUE} and
-ignoring \code{num.formula}.}
+including any censoring entries. Ignored if \code{stabilize} is a formula or list thereof.}
 
 \item{missing}{\code{character}; how missing data should be handled. The options
 and defaults depend on the \code{method} used. Ignored if no missing data is

@@ -195,7 +195,12 @@ print.summary.weightit <- function(x, digits = 3L, ...) {
     print.data.frame()
 
   if (is_not_null(x$weight.mean)) {
-    cli::cat_line("\n- ", .it("Mean of Weights"), " = ", round(x$weight.mean, 2L))
+    cli::cat_line("\n- ", .it("Mean of Weights"), ":")
+    x$weight.mean |>
+      as.data.frame() |>
+      setNames("") |>
+      round_df_char(digits = digits, pad = " ") |>
+      print.data.frame()
   }
 
   cli::cat_line("\n- ", .it("Effective Sample Sizes"), ":\n")

@@ -385,34 +385,33 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
   else .check_method_s.weights(method, s.weights)
 
   #Process stabilize
-  if (is_null(method) || isFALSE(stabilize)) {
-    stabilize <- NULL
-  }
-  else if (isTRUE(stabilize)) {
-    if (treat.type == "continuous") {
-      arg::wrn('setting {.code stabilize = TRUE} does nothing for continuous treatments, so it will be set to {.val {FALSE}}. See {.fun WeightIt::weightit} for details')
-      stabilize <- NULL
-    }
-    else {
-      stabilize <- as.formula("~ 1")
-    }
+  num.formula <- stab.f <- NULL
+
+  if (is_null(method)) {
+    stabilize <- FALSE
   }
 
-  if (is_not_null(stabilize)) {
-    if (is.character(method) && !.weightit_methods[[method]]$stabilize_ok) {
+  arg::arg_or(stabilize,
+              arg::arg_flag,
+              arg::arg_formula(one_sided = TRUE))
+
+  if (rlang::is_formula(stabilize)) {
+    num.formula <- stabilize
+    stabilize <- TRUE
+  }
+
+  if (stabilize) {
+    if (!is.function(method) && !.weightit_methods[[method]]$stabilize_ok) {
       arg::wrn("{.arg stabilize} cannot be used with {(.method_to_phrase(method))} and will be ignored")
-      stabilize <- NULL
+      stabilize <- FALSE
+      num.formula <- NULL
     }
-    else {
-      if (treat.type != "continuous" && estimand != "ATE") {
-        arg::err('{.arg stabilize} can only be supplied when {.code estimand = "ATE"}')
-      }
-
-      if (!rlang::is_formula(stabilize)) {
-        arg::err("{.arg stabilize} must be {.val {TRUE}}, {.val {FALSE}}, or a formula with the stabilization factors on the right hand side")
-      }
-
-      stabilize <- update(formula, update(stabilize, NULL ~ .))
+    else if (is_not_null(num.formula)) {
+      #Censoring time points are stabilized like any other, so a list of numerator
+      #formulas has one entry per entry of `formula.list`, censoring included.
+      .check_num.formula(num.formula, data, env = parent.frame(),
+                         formula.list = list(formula),
+                         stab_arg = "stabilize")
     }
   }
 
@@ -457,17 +456,36 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
   #Returns weights (weights) and propensity score (ps)
   obj <- do.call("weightit.fit", A)
 
-  if (is_not_null(stabilize)) {
-    stab.t.c <- get_covs_and_treat_from_formula2(stabilize, data)
+  if (stabilize) {
+    #Process stabilization formulas and get stab weights. Censoring time points
+    #are stabilized exactly like treatment time points, and by a censoring model
+    #of their own. The marker is stripped from the left side only so that
+    #`get_covs_and_treat_from_formula2()` is asked for nothing but the numerator
+    #covariates; the treatment passed to `weightit.fit()` below is still the
+    #censoring-tagged indicator, so the numerator is fit by the same `.cens`
+    #method as the denominator.
 
-    A["covs"] <- list(stab.t.c[["model.covs"]])
+    if (is_null(num.formula)) {
+      num.formula <- as.formula("~ 1")
+    }
+
+    stab.f <- update(formula, num.formula)
+
+    stab.re.bars <- .find_re_bars(stab.f)
+
+    stab.t.c <- get_covs_and_treat_from_formula2(
+      if (is_null(stab.re.bars)) stab.f
+      else .no_re_bars(stab.f),
+      data)
+
+    A["covs"] <- stab.t.c["model.covs"]
     A["method"] <- list("glm")
     A["moments"] <- list(integer())
     A["int"] <- list(FALSE)
     A["quantile"] <- list(list())
-    A[".formula"] <- list(stabilize)
-    A[".covs"] <- list(stab.t.c[["reported.covs"]])
-    A[".random"] <- list(NULL)
+    A[".formula"] <- list(stab.f)
+    A[".covs"] <- stab.t.c["reported.covs"]
+    A[".random"] <- list(stab.re.bars)
 
     sw_obj <- do.call("weightit.fit", A)
 
@@ -475,8 +493,7 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
     #the censored units; `.num_stab_weights()` neutralizes those so the division is
     #finite. The stabilized weight is then P(C = 0 | V)/P(C = 0 | X) for the units
     #still under observation and exactly 0 for those censored.
-    obj$weights <- obj$weights /
-      .num_stab_weights(sw_obj, censoring = treat.type == "censoring")
+    obj$weights <- obj$weights / .num_stab_weights(sw_obj, censoring = treat.type == "censoring")
   }
 
   if (is_not_null(method) && is_null(ps)) {
@@ -496,7 +513,7 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
               by = processed.by,
               call = call,
               formula = formula,
-              stabilize = stabilize,
+              stabilization = if (stabilize) stab.f[-2L],
               missing = if (nzchar(missing)) missing,
               env = parent.frame(),
               info = obj$info,
@@ -509,7 +526,7 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
   den.parts <- clear_null(.attr(obj, "Mparts.list") %or% list(.attr(obj, "Mparts")))
 
   if (keep.mparts && is_not_null(den.parts)) {
-    if (is_not_null(stabilize)) {
+    if (stabilize) {
       #Stabilization: append the (inverted) numerator part(s), which likewise may
       #be a single Mparts or one per `by` group.
       num.parts <- clear_null(.attr(sw_obj, "Mparts.list") %or% list(.attr(sw_obj, "Mparts")))
@@ -605,6 +622,17 @@ print.weightit <- function(x, ...) {
 
   if (is_not_null(x[["by"]])) {
     cli::cat_line(sprintf(" - by: %s", word_list(names(x[["by"]]), and.or = FALSE)))
+  }
+
+  if (is_not_null(x[["stabilization"]])) {
+    cat(" - stabilized")
+
+    if (is_not_null(get_varnames(x[["stabilization"]]))) {
+      cat(paste0("; stabilization factors:\n",
+                 sprintf("      %s", word_list(.attr(terms(x[["stabilization"]]), "term.labels"),
+                                               and.or = FALSE))
+      ))
+    }
   }
 
   if (is_not_null(x[["moderator"]])) {

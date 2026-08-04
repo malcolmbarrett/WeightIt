@@ -24,16 +24,14 @@
 #'   will be used to estimate weights. See [weightit()] for allowable options.
 #'   The default is `"glm"`, which estimates the weights using generalized
 #'   linear models.
-#' @param stabilize `logical`; whether or not to stabilize the weights.
+#' @param stabilize whether or not and how to stabilize the weights.
 #'   Stabilizing the weights involves fitting a model predicting treatment at
 #'   each time point from treatment status at prior time points. If `TRUE`, a
 #'   fully saturated model will be fit (i.e., all interactions between all
 #'   treatments up to each time point), essentially using the observed treatment
 #'   probabilities in the numerator (for binary and multi-category treatments).
-#'   This may yield an error if some combinations are not observed. Default is
-#'   `FALSE`. To manually specify stabilization model formulas, e.g., to specify
-#'   non-saturated models, use `num.formula`. With many time points, saturated
-#'   models may be time-consuming or impossible to fit.
+#'   This may yield an error if some combinations are not observed, and with many time points, saturated
+#'   models may be time-consuming or impossible to fit. Can also be a one-sided formula or list thereof, in which case `stabilize` replaces `num.formula` (described below). Default is `FALSE` for unstabilized weights.
 #' @param num.formula an optional one-sided formula with the stabilization
 #'   factors (other than the previous treatments) on the right hand side, which
 #'   adds, for each time point, the stabilization factors to a model saturated
@@ -41,9 +39,7 @@
 #'   to specify this model; including stabilization factors can change the
 #'   estimand without proper adjustment, and should be done with caution. Can
 #'   also be a list of one-sided formulas, one for each entry of `formula.list`,
-#'   including any censoring entries. Unless you
-#'   know what you are doing, we recommend setting `stabilize = TRUE` and
-#'   ignoring `num.formula`.
+#'   including any censoring entries. Ignored if `stabilize` is a formula or list thereof.
 #' @param include.obj `logical`; whether to include in the output a list of the fit objects
 #'   created in the process of estimating the weights at each time point. For
 #'   example, with `method = "glm"`, a list of the `glm` objects containing the
@@ -266,7 +262,7 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
   }
 
   reported.covs.list <- simple.covs.list <- covs.list <- treat.list <- w.list <- ps.list <-
-    stabout <- sw.list <- Mparts.list <- stab.Mparts.list <- na.list <-
+    re.bars.list <- stabout <- sw.list <- Mparts.list <- stab.Mparts.list <- na.list <-
     atrisk.list <- make_list(length(formula.list))
 
   if (is_null(formula.list) || !is.list(formula.list) ||
@@ -282,7 +278,13 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
     #is what makes it possible to model censoring that does not depend on
     #covariates while keeping the rest of the censoring machinery (risk sets,
     #tolerated NAs after censoring, M-estimation).
-    t.c <- get_covs_and_treat_from_formula2(formula.list[[i]], data)
+    re.bars.list[[i]] <- .find_re_bars(formula.list[[i]])
+
+    t.c <- get_covs_and_treat_from_formula2(
+      if (is_null(re.bars.list[[i]])) formula.list[[i]]
+      else .no_re_bars(formula.list[[i]]),
+      data)
+
     simple.covs.list[[i]] <- t.c[["simple.covs"]]
     reported.covs.list[[i]] <- t.c[["reported.covs"]]
 
@@ -320,6 +322,9 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
     if (!is.MSM.method) {
       .check_method_treat.type(method, get_treat_type(treat.list[[i]]))
     }
+
+    #Random effects terms are only supported by methods with re_ok = TRUE
+    .check_method_re(method, re.bars.list[[i]])
 
     #By is processed each for each time to check, but only last time is used for by.factor.
     processed.by <- .process_by(by, data = data,
@@ -425,6 +430,17 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
     stabilize <- TRUE
   }
 
+  arg::arg_or(stabilize,
+              arg::arg_flag,
+              arg::arg_formula(one_sided = TRUE))
+
+  stab_arg <- "num.formula"
+  if (rlang::is_formula(stabilize)) {
+    num.formula <- stabilize
+    stabilize <- TRUE
+    stab_arg <- "stabilize"
+  }
+
   if (stabilize) {
     if (!is.function(method) && !.weightit_methods[[method]]$stabilize_ok) {
       arg::wrn("{.arg stabilize} cannot be used with {(.method_to_phrase(method))} and will be ignored")
@@ -435,7 +451,8 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
       #Censoring time points are stabilized like any other, so a list of numerator
       #formulas has one entry per entry of `formula.list`, censoring included.
       .check_num.formula(num.formula, data, env = parent.frame(),
-                         formula.list = formula.list)
+                         formula.list = formula.list,
+                         stab_arg = stab_arg)
     }
   }
 
@@ -508,8 +525,10 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
 
       A_i["covs"] <- list(covs.list[[i]])
       A_i["treat"] <- list(treat.list[[i]])
+      A_i[".formula"] <- list(formula.list[[i]])
       A_i[".data"] <- list(data)
       A_i[".covs"] <- list(reported.covs.list[[i]])
+      A_i[".random"] <- list(re.bars.list[[i]])
 
       #Only units still under observation are used to fit the model. `NULL` rather
       #than an all-TRUE vector when there is no censoring, so that `weightit.fit()`
@@ -562,24 +581,30 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
         else if (is.list(num.formula)) {
           stab.f <- update(f_i, num.formula[[i]])
         }
+        else if (is_null(prior.treat.names)) {
+          stab.f <- update(f_i, ". ~ 1")
+        }
         else {
-          if (is_null(prior.treat.names)) {
-            stab.f <- update(f_i, ". ~ 1")
-          }
-          else {
-            stab.f <- update(f_i,
-                             sprintf(". ~ %s", paste(prior.treat.names,
-                                                     collapse = " * ")))
-          }
+          stab.f <- update(f_i,
+                           sprintf(". ~ %s", paste(prior.treat.names,
+                                                   collapse = " * ")))
         }
 
-        stab.t.c_i <- get_covs_and_treat_from_formula2(stab.f, data)
+        stab.re.bars <- .find_re_bars(stab.f)
+
+        stab.t.c_i <- get_covs_and_treat_from_formula2(
+          if (is_null(stab.re.bars)) stab.f
+          else .no_re_bars(stab.f),
+          data)
 
         A_i["covs"] <- stab.t.c_i["model.covs"]
         A_i["method"] <- list("glm")
         A_i["moments"] <- list(integer())
         A_i["int"] <- list(FALSE)
         A_i["quantile"] <- list(list())
+        A_i[".formula"] <- list(stab.f)
+        A_i[".covs"] <- stab.t.c_i["reported.covs"]
+        A_i[".random"] <- list(stab.re.bars)
 
         sw_obj <- do.call("weightit.fit", A_i)
 

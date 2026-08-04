@@ -1,7 +1,21 @@
 WeightIt News and Updates
 ======
 
+# `WeightIt` (development version)
+
+* Model formulas supplied to `weightitMSM()` can now have random effects included. Note this is intended to be used in the case of clustering, not for modeling longitudinal treatments in a single model.
+
+* Fixed a bug in `summary.weightitMSM()` where mean weights would be printed twice, one for each group.
+
+* In `weightitMSM()`, `stabilize` can now be supplied the same arguments as `num.formula`, making `num.formula` essentially redundant.
+
+* Stabilization formulas can now include random effects in both `weightit()` and `weightitMSM()`.
+
+* The `stabilize` component of `weightit` objects has been renamed to `stabilization` to match `weightitMSM` objects; this contains the stabilization formula, if any. This also mean the mean weights will be displayed in the `summary.weightit()` output.
+
 # `WeightIt` 2.0.0
+
+Several new features have been added, described in more detail below. In particular, these are censoring weights estimation and random effects in propensity score models.
 
 ### Censoring weights (IPCW)
 
