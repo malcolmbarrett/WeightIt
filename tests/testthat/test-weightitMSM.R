@@ -313,6 +313,53 @@ test_that("Non-binary treatment time point: continuous A_2, method = 'glm'", {
                    c("binary", "continuous", "binary"))
 })
 
+test_that("Non-binary treatment time point: multi-category A_2, method = 'glm'", {
+  msmdata_multi <- msmdata
+  set.seed(123)
+  msmdata_multi$A_2 <- factor(sample(c("x", "y", "z"), nrow(msmdata_multi),
+                                     replace = TRUE))
+
+  formulas_multi <- list(
+    A_1 ~ X1_0 + X2_0,
+    A_2 ~ X1_1 + X2_1 + A_1,
+    A_3 ~ X1_2 + X2_2 + A_2
+  )
+
+  expect_no_error({
+    W <- weightitMSM(formulas_multi, data = msmdata_multi, method = "glm")
+  })
+
+  expect_true(all(is.finite(W$weights) & W$weights > 0))
+  expect_identical(unname(vapply(W$treat.list, get_treat_type, character(1L))),
+                   c("binary", "multinomial", "binary"))
+
+  # Processing a factor treatment passes it through factor(), which drops
+  # attributes; the treatment's name has to survive it, since the time points are
+  # named from it and the saturated stabilization models are built from those names
+  expect_named(W$treat.list, c("A_1", "A_2", "A_3"))
+  expect_identical(attr(W$treat.list[[2L]], "treat.name"), "A_2")
+
+  expect_output(print(W), "number of time points: 3 (A_1, A_2, A_3)", fixed = TRUE)
+
+  # A multi-category time point at the *first* position, too
+  expect_no_error({
+    W1 <- weightitMSM(list(A_2 ~ X1_0 + X2_0, A_3 ~ X1_1 + X2_1 + A_2),
+                      data = msmdata_multi, method = "glm")
+  })
+
+  expect_named(W1$treat.list, c("A_2", "A_3"))
+
+  # The prior treatment's name is what the saturated numerator is built from
+  expect_no_error({
+    Ws <- weightitMSM(formulas_multi, data = msmdata_multi, method = "glm",
+                      stabilize = TRUE)
+  })
+
+  expect_identical(vapply(Ws$stabilization, deparse1, character(1L)),
+                   c("~1", "~A_1", "~A_1 + A_2 + A_1:A_2"))
+  expect_true(all(is.finite(Ws$weights) & Ws$weights > 0))
+})
+
 test_that("Non-binary treatment time point: continuous A_2, method = 'cbps'", {
   # weightit2cbps.R explicitly claims: "Any combination of treatment types is
   # supported" for longitudinal (MSM) treatments. This is a direct

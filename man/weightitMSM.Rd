@@ -30,7 +30,11 @@ balanced at that time point (i.e., treatments and covariates featured in
 early formulas should appear in later ones). Interactions and functions of
 covariates are allowed. As in \code{\link[=weightit]{weightit()}}, a formula may have an empty
 right hand side (e.g., \code{A_1 ~ 1}), which requests a marginal model at that
-time point; see \emph{Empty model formulas} in Details at \code{\link[=weightit]{weightit()}}.}
+time point; see \emph{Empty model formulas} in Details at \code{\link[=weightit]{weightit()}}. The
+formulas may also contain \CRANpkg{lme4}-style random effects terms (e.g.,
+\code{A_1 ~ X1_0 + (1 | school)}) for methods that accept them, in which case a
+multilevel model is fit at that time point. Note this is intended for
+clustering, not for modeling the longitudinal treatments in a single model.}
 
 \item{data}{an optional data set in the form of a data frame that contains
 the variables in the formulas in \code{formula.list}. This must be a wide data
@@ -48,7 +52,7 @@ fully saturated model will be fit (i.e., all interactions between all
 treatments up to each time point), essentially using the observed treatment
 probabilities in the numerator (for binary and multi-category treatments).
 This may yield an error if some combinations are not observed, and with many time points, saturated
-models may be time-consuming or impossible to fit. Can also be a one-sided formula or list thereof, in which case \code{stabilize} replaces \code{num.formula} (described below). Default is \code{FALSE} for unstabilized weights.}
+models may be time-consuming or impossible to fit. Can also be a one-sided formula or list thereof, in which case \code{stabilize} replaces \code{num.formula} (described below); as with \code{formula.list}, these formulas may contain \CRANpkg{lme4}-style random effects terms. Default is \code{FALSE} for unstabilized weights.}
 
 \item{by}{a string containing the name of the variable in \code{data} for which
 weighting is to be done within categories or a one-sided formula with the

@@ -46,12 +46,12 @@ each unit's weight will be multiplied by a stabilization factor, which is
 the the unconditional probability (or density) of each unit's observed
 treatment value. If a formula, a generalized linear model will be fit with
 the included predictors, and the inverse of the corresponding weight will
-be used as the standardization factor. Can only be used when \code{estimand = "ATE"} or with continuous
-treatments. Default is \code{FALSE} for no
-stabilization. See also the \code{num.formula} argument at \code{\link[=weightitMSM]{weightitMSM()}}.
-For continuous treatments, weights are already stabilized, so setting
-\code{stabilize = TRUE} will be ignored with a warning (supplying a formula
-still works).}
+be used as the standardization factor. The formula can contain
+\CRANpkg{lme4}-style random effects terms (e.g., \code{~ (1 | school)}) for
+methods that accept them, in which case a multilevel model is fit for the
+numerator. Can only be used when \code{estimand = "ATE"} or with continuous
+treatments. Default is \code{FALSE} for no stabilization. See also the
+\code{stabilize} argument at \code{\link[=weightitMSM]{weightitMSM()}}.}
 
 \item{focal}{when \code{estimand} is set to \code{"ATT"} or \code{"ATC"}, which group to
 consider the "treated" or "control" group, respectively. This group will not be weighted,

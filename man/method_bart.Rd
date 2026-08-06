@@ -154,6 +154,14 @@ or \code{weightitMSM()}, with the following exceptions:
 \item \code{sampleronly} is always set to \code{FALSE}
 }
 
+See also the \emph{Reproducibility} section below for information on using the \code{seed} argument.
+
+The following additional argument may be supplied:
+\describe{
+\item{\code{use.offset}}{\code{logical}; whether to use the linear predictor resulting from a generalized linear model as an offset to the BART model. If \code{TRUE}, this fits a probit regression model (for binary treatments) or a linear regression model (for continuous treatments) and supplies the linear predictor to the \code{offset} argument of \code{bart2()} or \code{stan4bart()}, overriding any supplied argument to \code{offset}. Default is \code{FALSE} to omit this offset. Only allowed for binary and continuous treatments.
+}
+}
+
 For binary and multi-category treatments, the following arguments may be supplied:
 \describe{
 \item{\code{subclass}}{\code{integer}; the number of subclasses to use for computing

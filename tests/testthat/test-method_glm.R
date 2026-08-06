@@ -624,8 +624,22 @@ test_that("Continuous treatment: stabilize composes with M-estimation", {
   fit <- lm_weightit(Y_C ~ Ac, data = test_data, weightit = W)
   expect_true(all(is.finite(sqrt(diag(vcov(fit))))))
 
-  # `stabilize = TRUE` does nothing for a continuous treatment and says so
-  expect_warning(weightit(Ac ~ X1 + X2 + X3, data = test_data, method = "glm",
-                          stabilize = TRUE),
-                 "continuous")
+  # `stabilize = TRUE` is the marginal-density numerator, i.e., exactly `~1`
+  expect_no_condition({
+    W_T <- weightit(Ac ~ X1 + X2 + X3, data = test_data, method = "glm",
+                    stabilize = TRUE)
+  })
+
+  expect_equal(W_T$weights,
+               weightit(Ac ~ X1 + X2 + X3, data = test_data, method = "glm",
+                        stabilize = ~1)$weights,
+               tolerance = eps)
+
+  expect_identical(deparse1(W_T$stabilization), "~1")
+
+  # The marginal density of a continuous treatment estimates nothing and leaves the
+  # weights alone, so the numerator supplies no M-estimation part and the
+  # denominator's alone still reproduce the weights
+  expect_length(attr(W_T, "Mparts.list"), 1L)
+  expect_M_parts_okay(W_T, tolerance = eps)
 })

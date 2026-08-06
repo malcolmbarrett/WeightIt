@@ -3,6 +3,8 @@ WeightIt News and Updates
 
 # `WeightIt` (development version)
 
+* With `method = "bart"`, `use.offset` can now be set to `TRUE` to use the linear predictor of a GLM as an offset in the BART model.
+
 * Model formulas supplied to `weightitMSM()` can now have random effects included. Note this is intended to be used in the case of clustering, not for modeling longitudinal treatments in a single model.
 
 * Fixed a bug in `summary.weightitMSM()` where mean weights would be printed twice, one for each group.
@@ -12,6 +14,12 @@ WeightIt News and Updates
 * Stabilization formulas can now include random effects in both `weightit()` and `weightitMSM()`.
 
 * The `stabilize` component of `weightit` objects has been renamed to `stabilization` to match `weightitMSM` objects; this contains the stabilization formula, if any. This also mean the mean weights will be displayed in the `summary.weightit()` output.
+
+* In `weightit()`, setting `stabilize = TRUE` with a continuous treatment now requests a marginal density model in the numerator rather than being ignored with a warning.
+
+* Fixed a bug in which the name of a multi-category (i.e., `factor` or `character`) treatment was lost when the treatment was processed. In `weightitMSM()`, this meant a multi-category time point would either be left unnamed or fail with an error about a replacement having length zero.
+
+* Fixed a bug in `print.weightitMSM()` in which the stabilization factors would be run together with the line that follows them.
 
 # `WeightIt` 2.0.0
 
