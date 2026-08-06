@@ -108,8 +108,16 @@
 #' or `weightitMSM()`, with the following exceptions:
 #'
 #' * `test`, `weights`,`subset`, `offset.test` are ignored
-#' * `combine.chains` is always set to `TRUE`
-#' * `sampleronly` is always set to `FALSE`
+#' * `combineChains` is always set to `TRUE`
+#' * `samplerOnly` is always set to `FALSE`
+#'
+#' See also the *Reproducibility* section below for information on using the `seed` argument.
+#'
+#' The following additional argument may be supplied:
+#' \describe{
+#'   \item{`use.offset`}{`logical`; whether to use the linear predictor resulting from a generalized linear model as an offset to the BART model. If `TRUE`, this fits a probit regression model (for binary treatments) or a linear regression model (for continuous treatments) and supplies the linear predictor to the `offset` argument of `bart2()` or `stan4bart()`, overriding any supplied argument to `offset`. Default is `FALSE` to omit this offset. Only allowed for binary and continuous treatments.
+#'   }
+#' }
 #'
 #' For binary and multi-category treatments, the following arguments may be supplied:
 #' \describe{
@@ -128,6 +136,8 @@
 #' Can also be `"kernel"` to use kernel density estimation, which calls [density()] to estimate the denominator density for the weights. (This used to be requested by setting `use.kernel = TRUE`, which is now deprecated.)}
 #'     \item{`bw`, `adjust`, `kernel`, `n`}{If `density = "kernel"`, the arguments to [density()]. The defaults are the same as those in `density()`.}
 #'   }
+#'
+#'
 #'
 #' @section Additional Outputs:
 #' \describe{
@@ -239,8 +249,30 @@ weightit2bart <- function(covs, treat, s.weights, subset, estimand, focal, stabi
     .make_covs_closer_to_1() |>
     .make_covs_full_rank()
 
-  t.lev <- get_treated_level(treat, estimand, focal)
+  t.lev <- .get_treated_level(treat, estimand, focal)
   treat <- binarize(treat, one = t.lev)
+
+  use.offset <- ...get("use.offset", FALSE)
+  arg::arg_flag(use.offset)
+
+  if (use.offset) {
+    rlang::try_fetch({
+      fit <- glm.fit(x = as.matrix(cbind(1, covs)), y = treat,
+                     weights = s.weights, family = quasibinomial("probit"))
+    },
+    warning = function(w) {
+      w <- conditionMessage(w)
+      if (w != "non-integer #successes in a binomial glm!") {
+        arg::wrn("(from {.fun stats::glm.fit}): {w}")
+      }
+      invokeRestart("muffleWarning")
+    })
+
+    offset <- fit$linear.predictors
+  }
+  else {
+    offset <- ...get("offset", rep.int(0, length(treat)))
+  }
 
   re.bars <- ...get(".random")
 
@@ -254,6 +286,7 @@ weightit2bart <- function(covs, treat, s.weights, subset, estimand, focal, stabi
     A <- .make_stan4bart_args(...)
     A[["formula"]] <- df[["formula"]]
     A[["data"]] <- df[["data"]]
+    A[["offset"]] <- offset
     A[["verbose"]] <- if (isTRUE(verbose)) TRUE else -1L
 
     rlang::try_fetch({verbosely({
@@ -269,10 +302,11 @@ weightit2bart <- function(covs, treat, s.weights, subset, estimand, focal, stabi
     #dbarts::bart2()
     A <- ...mget(setdiff(c(rlang::fn_fmls_names(dbarts::bart2),
                            rlang::fn_fmls_names(dbarts::dbartsControl)),
-                         c("offset.test", "weights", "subset", "test")))
+                         c("offset", "offset.test", "weights", "subset", "test")))
 
     A[["data"]] <- treat
     A[["formula"]] <- covs
+    A[["offset"]] <- offset
     A[["keepCall"]] <- FALSE
     A[["combineChains"]] <- TRUE
     A[["verbose"]] <- FALSE #necessary to prevent crash
@@ -331,6 +365,10 @@ weightit2bart.multi <-  function(covs, treat, s.weights, subset, estimand, focal
     .make_covs_full_rank()
 
   ps <- make_df(levels(treat), nrow = length(treat))
+
+  if (!isFALSE(...get("use.offset", FALSE))) {
+    arg::err("{.arg use.offset} cannot be used with multi-category treatments")
+  }
 
   re.bars <- ...get(".random")
 
@@ -417,6 +455,24 @@ weightit2bart.cont <- function(covs, treat, s.weights, subset, stabilize, missin
                                       n = ...get("n"),
                                       use.kernel = ...get("use.kernel"))
 
+  use.offset <- ...get("use.offset", FALSE)
+  arg::arg_flag(use.offset)
+
+  if (use.offset) {
+    rlang::try_fetch({
+      fit <- glm.fit(x = as.matrix(cbind(1, covs)), y = treat,
+                     weights = s.weights, family = gaussian())
+    },
+    warning = function(w) {
+      invokeRestart("muffleWarning")
+    })
+
+    offset <- fit$linear.predictors
+  }
+  else {
+    offset <- ...get("offset", rep.int(0, length(treat)))
+  }
+
   re.bars <- ...get(".random")
 
   if (is_not_null(re.bars)) {
@@ -430,6 +486,7 @@ weightit2bart.cont <- function(covs, treat, s.weights, subset, stabilize, missin
     A <- .make_stan4bart_args(...)
     A[["formula"]] <- df[["formula"]]
     A[["data"]] <- df[["data"]]
+    A[["offset"]] <- offset
     A[["verbose"]] <- if (isTRUE(verbose)) TRUE else -1L
 
     #Estimate GPS
@@ -447,10 +504,11 @@ weightit2bart.cont <- function(covs, treat, s.weights, subset, stabilize, missin
     #dbarts::bart2()
     A <- ...mget(setdiff(c(rlang::fn_fmls_names(dbarts::bart2),
                            rlang::fn_fmls_names(dbarts::dbartsControl)),
-                         c("offset.test", "weights", "subset", "test")))
+                         c("offset", "offset.test", "weights", "subset", "test")))
 
     A[["formula"]] <- covs
     A[["data"]] <- treat
+    A[["offset"]] <- offset
     A[["keepCall"]] <- FALSE
     A[["combineChains"]] <- TRUE
     A[["verbose"]] <- FALSE #necessary to prevent crash
