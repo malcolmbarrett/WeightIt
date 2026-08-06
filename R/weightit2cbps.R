@@ -289,7 +289,7 @@ weightit2cbps <- function(covs, treat, s.weights, estimand, focal, subset,
                                 treat = treat) |>
     .make_covs_full_rank()
 
-  t.lev <- get_treated_level(treat, estimand, focal)
+  t.lev <- .get_treated_level(treat, estimand, focal)
   treat <- binarize(treat, one = t.lev)
 
   mod_covs <- cbind(`(Intercept)` = 1, scale(svd(covs)$u))
@@ -1432,7 +1432,7 @@ weightitMSM2cbps <- function(covs.list, treat.list, s.weights, subset, missing, 
         #missing value as a third level, and the treatment is legitimately missing
         #for units that have already been censored
         z <- treat.list[[i]]
-        z[r] <- binarize(z[r], one = get_treated_level(z[r], "ATE"))
+        z[r] <- binarize(z[r], one = .get_treated_level(z[r], "ATE"))
         unclass(z)
       },
       `multi-category` =,

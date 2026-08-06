@@ -317,15 +317,14 @@ weightit2glm <- function(covs, treat, s.weights, subset, estimand, focal,
       }
 
       colinear.covs.to.remove <- setdiff(colnames(covs), colnames(make_full_rank(covs0)))
+      covs <- covs[, colnames(covs) %nin% colinear.covs.to.remove, drop = FALSE]
     }
     else {
-      colinear.covs.to.remove <- setdiff(colnames(covs), colnames(make_full_rank(covs)))
+      covs <- .make_covs_full_rank(covs)
     }
-
-    covs <- covs[, colnames(covs) %nin% colinear.covs.to.remove, drop = FALSE]
   }
 
-  t.lev <- get_treated_level(treat, estimand, focal)
+  t.lev <- .get_treated_level(treat, estimand, focal)
   treat <- binarize(treat, one = t.lev)
 
   #Process link
@@ -649,12 +648,11 @@ weightit2glm.multi <- function(covs, treat, s.weights, subset, estimand, focal,
       }
 
       colinear.covs.to.remove <- setdiff(colnames(covs), colnames(make_full_rank(covs0)))
+      covs <- covs[, colnames(covs) %nin% colinear.covs.to.remove, drop = FALSE]
     }
     else {
-      colinear.covs.to.remove <- setdiff(colnames(covs), colnames(make_full_rank(covs)))
+      covs <- .make_covs_full_rank(covs)
     }
-
-    covs <- covs[, colnames(covs) %nin% colinear.covs.to.remove, drop = FALSE]
   }
 
   for (i in c("use.mlogit", "use.mclogit")) {
@@ -1127,12 +1125,11 @@ weightit2glm.cont <- function(covs, treat, s.weights, subset, stabilize, missing
         covs0[is.na(covs0[, i]), i] <- covs0[!is.na(covs0[, i]), i][1L]
       }
       colinear.covs.to.remove <- setdiff(colnames(covs), colnames(make_full_rank(covs0)))
+      covs <- covs[, colnames(covs) %nin% colinear.covs.to.remove, drop = FALSE]
     }
     else {
-      colinear.covs.to.remove <- setdiff(colnames(covs), colnames(make_full_rank(covs)))
+      covs <- .make_covs_full_rank(covs)
     }
-
-    covs <- covs[, colnames(covs) %nin% colinear.covs.to.remove, drop = FALSE]
   }
 
   s.weights <- s.weights / mean_fast(s.weights)

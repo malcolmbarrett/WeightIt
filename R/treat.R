@@ -20,12 +20,20 @@ as.treat <- function(x, process = NULL, censoring = NULL) {
   arg::arg_flag(process)
 
   if (process || !has_treat_type(x)) {
+    #Multi-category treatments are passed through `factor()`, here and inside
+    #`assign_treat_type()`, which drops every attribute; the treatment's name is
+    #carried across by hand so that it survives processing as it does for the other
+    #treatment types. `weightitMSM()` names its `treat.list` from it.
+    treat.name <- .attr(x, "treat.name")
+
     x <- assign_treat_type(x, censoring = censoring)
     treat.type <- get_treat_type(x)
 
     if (treat.type %in% c("multinomial", "multi-category")) {
       x <- assign_treat_type(factor(x))
     }
+
+    attr(x, "treat.name") <- treat.name
   }
 
   class(x) <- unique(c("treat", class(x)))

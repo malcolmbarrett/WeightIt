@@ -369,7 +369,7 @@ weightit2super <- function(covs, treat, s.weights, subset, estimand, focal,
     treat <- .make_cens_treat(treat)
   }
   else {
-    t.lev <- get_treated_level(treat, estimand, focal)
+    t.lev <- .get_treated_level(treat, estimand, focal)
     treat <- binarize(treat, one = t.lev)
   }
 

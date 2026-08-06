@@ -1,5 +1,6 @@
 #' Characteristic Function Distance Balancing
 #' @name method_cfd
+#' @aliases method_kernel
 #' @usage NULL
 #'
 #' @description
@@ -68,7 +69,7 @@
 #'   \item{`lambda`}{a positive numeric scalar used to penalize the square of the weights. This value divided by the square of the total sample size is added to the diagonal of the quadratic part of the loss function. Higher values favor weights with less variability. Default is .0001, which is essentially 0.}
 #'   \item{`moments`}{`integer`; the highest power of each covariate to be balanced. For example, if `moments = 3`, each covariate, its square, and its cube will be balanced. Can also be a named vector with a value for each covariate (e.g., `moments = c(x1 = 2, x2 = 4)`). Values greater than 1 for categorical covariates are ignored. Default is 0 to impose no constraint on balance.}
 #'   \item{`int`}{`logical`; whether first-order interactions of the covariates are to be balanced. Default is `FALSE`.}
-#'   \item{`tols`}{when `moments` is positive, a number corresponding to the maximum allowed standardized mean difference (for binary and multi-category treatments) or treatment-covariate correlation (for continuous treatments) allowed. Default is 0. Ignored when `moments = 0`.}
+#'   \item{`tols`}{when `moments` is positive, a number corresponding to the maximum allowed standardized mean difference allowed. Default is 0. Ignored when `moments = 0`.}
 #'   \item{`min.w`}{the minimum allowable weight. Negative values (including `-Inf`) are allowed. Default is `1e-8`.}
 #' }
 #'
@@ -206,7 +207,7 @@ weightit2cfd <- function(covs, treat, s.weights, subset, estimand, focal,
   treat <- treat[subset]
   s.weights <- s.weights[subset]
 
-  t.lev <- get_treated_level(treat, estimand, focal)
+  t.lev <- .get_treated_level(treat, estimand, focal)
   treat <- binarize(treat, one = t.lev)
 
   n <- length(treat)

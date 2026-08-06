@@ -260,7 +260,7 @@ weightit2energy <- function(covs, treat, s.weights, subset, estimand, focal,
   treat <- treat[subset]
   s.weights <- s.weights[subset]
 
-  t.lev <- get_treated_level(treat, estimand, focal)
+  t.lev <- .get_treated_level(treat, estimand, focal)
   treat <- binarize(treat, one = t.lev)
 
   n <- length(treat)

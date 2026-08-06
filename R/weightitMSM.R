@@ -16,7 +16,11 @@
 #'   early formulas should appear in later ones). Interactions and functions of
 #'   covariates are allowed. As in [weightit()], a formula may have an empty
 #'   right hand side (e.g., `A_1 ~ 1`), which requests a marginal model at that
-#'   time point; see *Empty model formulas* in Details at [weightit()].
+#'   time point; see *Empty model formulas* in Details at [weightit()]. The
+#'   formulas may also contain \CRANpkg{lme4}-style random effects terms (e.g.,
+#'   `A_1 ~ X1_0 + (1 | school)`) for methods that accept them, in which case a
+#'   multilevel model is fit at that time point. Note this is intended for
+#'   clustering, not for modeling the longitudinal treatments in a single model.
 #' @param data an optional data set in the form of a data frame that contains
 #'   the variables in the formulas in `formula.list`. This must be a wide data
 #'   set with exactly one row per unit.
@@ -31,7 +35,7 @@
 #'   treatments up to each time point), essentially using the observed treatment
 #'   probabilities in the numerator (for binary and multi-category treatments).
 #'   This may yield an error if some combinations are not observed, and with many time points, saturated
-#'   models may be time-consuming or impossible to fit. Can also be a one-sided formula or list thereof, in which case `stabilize` replaces `num.formula` (described below). Default is `FALSE` for unstabilized weights.
+#'   models may be time-consuming or impossible to fit. Can also be a one-sided formula or list thereof, in which case `stabilize` replaces `num.formula` (described below); as with `formula.list`, these formulas may contain \CRANpkg{lme4}-style random effects terms. Default is `FALSE` for unstabilized weights.
 #' @param num.formula an optional one-sided formula with the stabilization
 #'   factors (other than the previous treatments) on the right hand side, which
 #'   adds, for each time point, the stabilization factors to a model saturated
@@ -278,7 +282,10 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
     #is what makes it possible to model censoring that does not depend on
     #covariates while keeping the rest of the censoring machinery (risk sets,
     #tolerated NAs after censoring, M-estimation).
-    re.bars.list[[i]] <- .find_re_bars(formula.list[[i]])
+    #`[i] <- list(.)` rather than `[[i]] <-`: `.find_re_bars()` returns NULL when
+    #there are no random effects, and `[[i]] <- NULL` would delete the entry
+    #instead of setting it, shrinking the list out from under the loop.
+    re.bars.list[i] <- list(.find_re_bars(formula.list[[i]]))
 
     t.c <- get_covs_and_treat_from_formula2(
       if (is_null(re.bars.list[[i]])) formula.list[[i]]
@@ -423,22 +430,25 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
     num.formula <- NULL
     stabilize <- FALSE
   }
-  else if (is_not_null(num.formula)) {
-    if (!isTRUE(stabilize)) {
-      arg::msg("setting {.arg stabilize} to {.val {TRUE}} based on {.arg num.formula} input")
-    }
-    stabilize <- TRUE
-  }
 
   arg::arg_or(stabilize,
               arg::arg_flag,
-              arg::arg_formula(one_sided = TRUE))
+              arg::arg_formula(one_sided = TRUE),
+              arg::arg_list)
 
+  #`stabilize` accepts anything `num.formula` does (a one-sided formula or a list
+  #thereof, one entry per entry of `formula.list`), in which case it supersedes
+  #`num.formula`; the contents are validated by `.check_num.formula()` below.
   stab_arg <- "num.formula"
-  if (rlang::is_formula(stabilize)) {
+
+  if (rlang::is_formula(stabilize) || is.list(stabilize)) {
     num.formula <- stabilize
     stabilize <- TRUE
     stab_arg <- "stabilize"
+  }
+  else if (is_not_null(num.formula) && !stabilize) {
+    arg::msg("setting {.arg stabilize} to {.val {TRUE}} based on {.arg num.formula} input")
+    stabilize <- TRUE
   }
 
   if (stabilize) {
@@ -693,7 +703,17 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
 
   out <- clear_null(out)
 
-  if (keep.mparts && all(lengths(Mparts.list) > 0L)) {
+  #Every factor of the weights must be in the stack, since the parts are what the
+  #weights are recomputed from. A numerator that supplies no parts is fine only when
+  #it left the weights alone (e.g., the marginal density of a continuous treatment,
+  #which is estimated by nothing and is exactly 1); when it did change them (e.g., a
+  #mixed model, which has no M-estimation form), the object cannot support
+  #M-estimation at all.
+  stab.mparts.okay <- !stabilize ||
+    all(lengths(stab.Mparts.list) > 0L |
+          vapply(sw.list, function(sw) all(sw == 1), logical(1L)))
+
+  if (keep.mparts && all(lengths(Mparts.list) > 0L) && stab.mparts.okay) {
     #Each slot holds a list of parts (per time point, and per `by` group within a
     #time point); flatten one level into a single stacked Mparts.list.
     attr(out, "Mparts.list") <- clear_null(c(do.call("c", Mparts.list),
@@ -709,7 +729,7 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
 print.weightitMSM <- function(x, ...) {
   treat.types <- vapply(x[["treat.list"]], get_treat_type, character(1L))
 
-  cat(sprintf("A %s object\n", .it(class(x)[1L])))
+  cli::cat_line(sprintf("A %s object", .it(class(x)[1L])))
 
   if (is_not_null(x[["method"]])) {
     method_name <- {
@@ -727,107 +747,110 @@ print.weightitMSM <- function(x, ...) {
         ""
     }
 
-    cat(sprintf(" - method: %s%s\n",
-                method_name,
-                method_note))
+    cli::cat_line(sprintf(" - method: %s%s",
+                          method_name,
+                          method_note))
   }
   else if (all_the_same(x[["weights"]])) {
-    cat(" - method: no weighting\n")
+    cli::cat_line(" - method: no weighting")
   }
 
-  cat(sprintf(" - number of obs.: %s\n",
-              nobs(x)))
+  cli::cat_line(sprintf(" - number of obs.: %s",
+                        nobs(x)))
 
-  cat(sprintf(" - sampling weights: %s\n",
-              if (is_null(x[["s.weights"]]) || all_the_same(x[["s.weights"]])) "none" else "present"))
+  cli::cat_line(sprintf(" - sampling weights: %s",
+                        if (is_null(x[["s.weights"]]) || all_the_same(x[["s.weights"]])) "none" else "present"))
 
-  cat(sprintf(" - number of time points: %s (%s)\n",
-              length(x[["treat.list"]]),
-              word_list(names(x[["treat.list"]]), and.or = FALSE)))
+  cli::cat_line(sprintf(" - number of time points: %s (%s)",
+                        length(x[["treat.list"]]),
+                        word_list(names(x[["treat.list"]]), and.or = FALSE)))
 
-  cat(" - treatment:\n")
+  cli::cat_line(" - treatment:")
   for (i in seq_along(x[["treat.list"]])) {
-    cat(sprintf("    + time %s: %s\n",
-                i,
-                switch(treat.types[i],
-                       continuous = "continuous",
-                       `multi-category` =,
-                       multinomial = sprintf("%s-category (%s)",
-                                             nunique(x[["treat.list"]][[i]]),
-                                             word_list(levels(x[["treat.list"]][[i]]), and.or = FALSE)),
-                       binary = "2-category")))
+    cli::cat_line(sprintf("    + time %s: %s",
+                          i,
+                          switch(treat.types[i],
+                                 continuous = "continuous",
+                                 `multi-category` =,
+                                 multinomial = sprintf("%s-category (%s)",
+                                                       nunique(x[["treat.list"]][[i]]),
+                                                       word_list(levels(x[["treat.list"]][[i]]), and.or = FALSE)),
+                                 binary = "2-category")))
   }
 
   if (is_not_null(x[["cens.list"]])) {
-    cat(" - censoring (IPCW):\n")
+    cli::cat_line(" - censoring (IPCW):")
     for (i in seq_along(x[["cens.list"]])) {
-      cat(sprintf("    + %s: %s of %s units censored\n",
-                  names(x[["cens.list"]])[i],
-                  sum(.make_cens_treat(x[["cens.list"]][[i]]) == 1, na.rm = TRUE),
-                  nobs(x)))
+      cli::cat_line(sprintf("    + %s: %s of %s units censored",
+                            names(x[["cens.list"]])[i],
+                            sum(.make_cens_treat(x[["cens.list"]][[i]]) == 1, na.rm = TRUE),
+                            nobs(x)))
     }
   }
 
   if (is_not_null(x[["cens.covs.list"]])) {
-    cat(" - censoring covariates:\n")
+    cli::cat_line(" - censoring covariates:")
     for (i in seq_along(x[["cens.covs.list"]])) {
-      cat(sprintf("    + %s: %s\n",
-                  names(x[["cens.list"]])[i],
-                  if (is_null(x[["cens.covs.list"]][[i]])) "(none)"
-                  else word_list(names(x[["cens.covs.list"]][[i]]), and.or = FALSE)))
+      cli::cat_line(sprintf("    + %s: %s",
+                            names(x[["cens.list"]])[i],
+                            if (is_null(x[["cens.covs.list"]][[i]])) "(none)"
+                            else word_list(names(x[["cens.covs.list"]][[i]]), and.or = FALSE)))
     }
   }
 
   if (is_not_null(x[["covs.list"]])) {
-    cat(" - covariates:\n")
+    cli::cat_line(" - covariates:")
     for (i in seq_along(x[["covs.list"]])) {
       if (i == 1L) {
-        cat(sprintf("    + baseline: %s\n",
-                    if (is_null(x$covs.list[[i]])) "(none)"
-                    else word_list(names(x$covs.list[[i]]), and.or = FALSE)))
+        cli::cat_line(sprintf("    + baseline: %s",
+                              if (is_null(x[["covs.list"]][[i]])) "(none)"
+                              else word_list(names(x[["covs.list"]][[i]]), and.or = FALSE)))
       }
       else {
-        cat(sprintf("    + after time %s: %s\n",
-                    i - 1L,
-                    if (is_null(x$covs.list[[i]])) "(none)"
-                    else word_list(names(x$covs.list[[i]]), and.or = FALSE)))
+        cli::cat_line(sprintf("    + after time %s: %s",
+                              i - 1L,
+                              if (is_null(x[["covs.list"]][[i]])) "(none)"
+                              else word_list(names(x[["covs.list"]][[i]]), and.or = FALSE)))
       }
     }
   }
 
   if (is_not_null(x[["missing"]]) && !identical(x[["missing"]], "")) {
-    cat(sprintf(" - missingness method: %s\n",
-                .missing_to_phrase(x[["missing"]])))
+    cli::cat_line(sprintf(" - missingness method: %s",
+                          .missing_to_phrase(x[["missing"]])))
   }
 
   if (is_not_null(x[["by"]])) {
-    cat(sprintf(" - by: %s\n",
-                word_list(names(x[["by"]]), and.or = FALSE)))
+    cli::cat_line(sprintf(" - by: %s",
+                          word_list(names(x[["by"]]), and.or = FALSE)))
   }
 
-  if (is_not_null(x$stabilization)) {
-    cat(" - stabilized")
-    if (any_apply(x$stabilization, function(s) is_not_null(get_varnames(s)))) {
-      cat(paste0("; stabilization factors:\n",
-                 if (length(x$stabilization) == 1L) {
-                   sprintf("      %s", word_list(.attr(terms(x[["stabilization"]][[1L]]), "term.labels"),
-                                                 and.or = FALSE))
-                 }
-                 else {
-                   paste(vapply(seq_along(x$stabilization), function(i) {
-                     if (i == 1L) {
-                       sprintf("    + baseline: %s",
-                               if (is_null(.attr(terms(x[["stabilization"]][[i]]), "term.labels"))) "(none)"
-                               else word_list(.attr(terms(x[["stabilization"]][[i]]), "term.labels"), and.or = FALSE))
-                     }
-                     else {
-                       sprintf("    + after time %s: %s",
-                               i - 1L,
-                               word_list(.attr(terms(x[["stabilization"]][[i]]), "term.labels"), and.or = FALSE))
-                     }
-                   }, character(1L)), collapse = "\n")
-                 }))
-    }
+  if (is_not_null(x[["stabilization"]])) {
+    cli::cat_line(
+      " - stabilized",
+      if (any_apply(x[["stabilization"]], function(s) is_not_null(get_varnames(s)))) {
+        stab.term.labels <- lapply(x[["stabilization"]],
+                                   function(s) .attr(terms(s), "term.labels"))
+
+        paste0("; stabilization factors:\n",
+               if (length(stab.term.labels) == 1L) {
+                 sprintf("      %s", word_list(stab.term.labels[[1L]], and.or = FALSE))
+               }
+               else {
+                 paste(vapply(seq_along(stab.term.labels), function(i) {
+                   if (i == 1L) {
+                     sprintf("    + baseline: %s",
+                             if (is_null(stab.term.labels[[i]])) "(none)"
+                             else word_list(stab.term.labels[[i]], and.or = FALSE))
+                   }
+                   else {
+                     sprintf("    + after time %s: %s",
+                             i - 1L,
+                             word_list(stab.term.labels[[i]], and.or = FALSE))
+                   }
+                 }, character(1L)), collapse = "\n")
+               })
+      })
   }
 
   #trim
@@ -851,15 +874,15 @@ print.weightitMSM <- function(x, ...) {
         trim.at <- c(1 - trim.at, trim.at)
       }
 
-      cat(sprintf(" - weights trimmed at %s%s\n",
-                  word_list(paste0(round(100 * trim.at, 2L), "%")),
-                  if (trim.drop) " and units dropped" else ""))
+      cli::cat_line(sprintf(" - weights trimmed at %s%s",
+                            word_list(paste0(round(100 * trim.at, 2L), "%")),
+                            if (trim.drop) " and units dropped" else ""))
     }
     else {
-      cat(sprintf(" - weights trimmed at the %s %s%s\n",
-                  if (trim.lower) "top and bottom" else "top",
-                  trim.at,
-                  if (trim.drop) " and units dropped" else ""))
+      cli::cat_line(sprintf(" - weights trimmed at the %s %s%s",
+                            if (trim.lower) "top and bottom" else "top",
+                            trim.at,
+                            if (trim.drop) " and units dropped" else ""))
     }
   }
 

@@ -82,7 +82,7 @@ summary.weightit <- function(object, top = 5L, ignore.s.weights = FALSE, weight.
   ww <- setNames(w * sw, names(t) %or% seq_along(t))
 
   if (treat.type == "binary") {
-    treated <- get_treated_level(t, object$estimand, object$focal)
+    treated <- .get_treated_level(t, object$estimand, object$focal)
 
     tx <- list(treated = which(t == treated),
                control = which(t != treated))
@@ -103,7 +103,7 @@ summary.weightit <- function(object, top = 5L, ignore.s.weights = FALSE, weight.
   }
 
   if (weight.range) {
-    out$weight.range <- lapply(tx, function(ti) c(min(ww[ti]), max(w[ti]))) |>
+    out$weight.range <- lapply(tx, function(ti) c(min(ww[ti]), max(ww[ti]))) |>
       setNames(names(tx))
 
     out$weight.top <- lapply(tx, function(ti) rev(sort(ww[ti], decreasing = TRUE)[seq_len(top)])) |>
@@ -297,7 +297,8 @@ summary.weightitMSM <- function(object, top = 5L, ignore.s.weights = FALSE, weig
   for (ti in seq_along(object$treat.list)) {
     obj <- as.weightit(object$weights, treat = object$treat.list[[ti]],
                        s.weights = sw, stabilization = object$stabilization)
-    out.list[[ti]] <- summary.weightit(obj, top = top, ignore.s.weights = ignore.s.weights, ...)
+    out.list[[ti]] <- summary.weightit(obj, top = top, ignore.s.weights = ignore.s.weights,
+                                       weight.range = weight.range, ...)
   }
 
   class(out.list) <- "summary.weightitMSM"

@@ -260,6 +260,8 @@
     if (treat.type == "continuous" || !subclass_ok) {
       arg::err("subclasses are not compatible with {(.method_to_phrase(method))} with a {treat.type} treatment")
     }
+
+    arg::when_not_null(subclass, arg::arg_count)
   }
 }
 
@@ -415,20 +417,20 @@
   missing
 }
 
-.missing_to_phrase <- function(missing) {
-  switch(missing,
-         ind = "missingness indicators",
-         saem = "SAEM",
-         surr = "surrogate splitting",
-         missing)
-}
-
 .process_missing2 <- function(missing, covs) {
   if (is_null(missing) || identical(missing, "") || !anyNA(covs)) {
     return("")
   }
 
   missing
+}
+
+.missing_to_phrase <- function(missing) {
+  switch(missing,
+         ind = "missingness indicators",
+         saem = "SAEM",
+         surr = "surrogate splitting",
+         missing)
 }
 
 .process_osqp_settings <- function(verbose, ...) {
@@ -717,7 +719,7 @@
            c("control", "treated"))
 }
 
-get_treated_level <- function(treat, estimand, focal = NULL) {
+.get_treated_level <- function(treat, estimand, focal = NULL) {
   ct <- .get_control_and_treated_levels(treat, estimand, focal)
 
   unname(ct["treated"])
@@ -943,33 +945,49 @@ get_treated_level <- function(treat, estimand, focal = NULL) {
   w
 }
 
-.check_num.formula <- function(num.formula, data, env, formula.list) {
+#The language objects to be checked for existence in a numerator formula. Any
+#lme4-style bar terms are replaced by the names of the variables that appear in
+#them; evaluating a bar term itself would apply `|` to those variables (a spurious
+#warning for factors, a silent success for anything else) rather than test whether
+#they exist.
+.num_formula_vars <- function(f) {
+  bars <- .find_re_bars(f)
+
+  fe.vars <- as.list(.attr(terms(if (is_null(bars)) f else .no_re_bars(f)),
+                           "variables")[-1L])
+
+  re.vars <- unique(unlist(lapply(bars, get_varnames)))
+
+  c(fe.vars, lapply(re.vars, str2lang))
+}
+
+.check_num.formula <- function(num.formula, data, env, formula.list, stab_arg = "num.formula") {
   if (rlang::is_formula(num.formula)) {
     if (!rlang::is_formula(num.formula, lhs = FALSE)) {
-      arg::err("the argument to {.arg num.formula} must have right hand side variables but not a response variable (e.g., {.code ~ V1 + V2})")
+      arg::err("the argument to {.arg {stab_arg}} must have right hand side variables but not a response variable (e.g., {.code ~ V1 + V2})")
     }
 
-    rhs.vars.mentioned.lang <- .attr(terms(num.formula), "variables")[-1L]
+    rhs.vars.mentioned.lang <- .num_formula_vars(num.formula)
     rhs.vars.mentioned <- vapply(rhs.vars.mentioned.lang, deparse1, character(1L))
     rhs.vars.failed <- vapply(rhs.vars.mentioned.lang, function(v) {
       null_or_error(try(eval(v, c(data, env)), silent = TRUE))
     }, logical(1L))
 
     if (any(rhs.vars.failed)) {
-      arg::err(c("All variables in {.arg num.formula} must be variables in {.arg data} or objects in the global environment.",
+      arg::err(c("All variables in {.arg {stab_arg}} must be variables in {.arg data} or objects in the global environment.",
                  "i" = "Missing variables: {.var {rhs.vars.mentioned[rhs.vars.failed]}}"))
     }
   }
   else if (is.list(num.formula)) {
     if (length(num.formula) != length(formula.list)) {
-      arg::err("when supplied as a list, {.arg num.formula} must have as many entries as {.arg formula.list}")
+      arg::err("when supplied as a list, {.arg {stab_arg}} must have as many entries as {.arg formula.list}")
     }
 
     if (!all_apply(num.formula, rlang::is_formula, lhs = FALSE)) {
-      arg::err("{.arg num.formula} must be a single formula with no response variable and with the stabilization factors on the right hand side or a list thereof")
+      arg::err("{.arg {stab_arg}} must be a single formula with no response variable and with the stabilization factors on the right hand side or a list thereof")
     }
 
-    rhs.vars.mentioned.lang.list <- lapply(num.formula, function(nf) .attr(terms(nf), "variables")[-1L])
+    rhs.vars.mentioned.lang.list <- lapply(num.formula, .num_formula_vars)
     rhs.vars.mentioned <- unique(unlist(lapply(rhs.vars.mentioned.lang.list,
                                                function(r) vapply(r, deparse1, character(1L)))))
     rhs.vars.failed <- vapply(rhs.vars.mentioned, function(v) {
@@ -977,11 +995,11 @@ get_treated_level <- function(treat, estimand, focal = NULL) {
     }, logical(1L))
 
     if (any(rhs.vars.failed)) {
-      arg::err("all variables in {.arg num.formula} must be variables in {.arg data} or objects in the global environment. Missing variables: {.var {rhs.vars.mentioned[rhs.vars.failed]}}")
+      arg::err("all variables in {.arg {stab_arg}} must be variables in {.arg data} or objects in the global environment. Missing variables: {.var {rhs.vars.mentioned[rhs.vars.failed]}}")
     }
   }
   else {
-    arg::err("{.arg num.formula} must be a single formula with no response variable and with the stabilization factors on the right hand side or a list thereof")
+    arg::err("{.arg {stab_arg}} must be a single formula with no response variable and with the stabilization factors on the right hand side or a list thereof")
   }
 }
 
@@ -1419,7 +1437,6 @@ get.s.d.denom.weightit <- function(s.d.denom = NULL, estimand = NULL, weights = 
 }
 
 .subclass_ps_bin <- function(ps, treat, estimand = "ATE", subclass) {
-  arg::arg_count(subclass)
   subclass <- round(subclass)
 
   estimand <- toupper(estimand)
@@ -1710,6 +1727,7 @@ stabilize_w <- function(weights, treat) {
   #Assume treat is binary
   if (is_not_null(subclass)) {
     #Get MMW subclass propensity scores
+    arg::arg_count(subclass)
     ps <- .subclass_ps_bin(ps, treat, estimand, subclass)
   }
 
@@ -1803,6 +1821,7 @@ stabilize_w <- function(weights, treat) {
 
   if (is_not_null(subclass)) {
     #Get MMW subclass propensity scores
+    arg::arg_count(subclass)
     ps_mat <- .subclass_ps_multi(ps_mat, treat, estimand, focal, subclass)
   }
 
@@ -1872,6 +1891,7 @@ stabilize_w <- function(weights, treat) {
 
     if (is_not_null(subclass)) {
       #Get MMW subclass propensity scores
+      arg::arg_count(subclass)
       for (p in seq_col(ps)) {
         ps[, p] <- .subclass_ps_bin(ps[, p], treat, estimand, subclass)
       }
@@ -1922,8 +1942,10 @@ stabilize_w <- function(weights, treat) {
 
     if (is_not_null(subclass)) {
       #Get MMW subclass propensity scores
-      for (p in seq_len(last(dim(ps))))
+      arg::arg_count(subclass)
+      for (p in seq_len(last(dim(ps)))) {
         ps[, , p] <- .subclass_ps_multi(ps[, , p], treat, estimand, focal, subclass)
+      }
     }
 
     ps <- squish(ps, eps)
@@ -2018,7 +2040,7 @@ stabilize_w <- function(weights, treat) {
 #one applies and NULL when there is a model to fit. `C` must already be subset.
 #
 #These are not merely shortcuts. `binarize()` returns all 1s when its input takes
-#a single value, and `get_treated_level(treat, "ATT", focal = 1)` errors when 1 is
+#a single value, and `.get_treated_level(treat, "ATT", focal = 1)` errors when 1 is
 #not among the values present, so an all-uncensored problem must never reach a
 #weighting function.
 .cens_degenerate_out <- function(C) {
@@ -2166,7 +2188,9 @@ verbosely <- function(expr, verbose = TRUE) {
   }
 
   invisible(utils::capture.output({
-    out <- invisible(expr)
+    suppressMessages({
+      out <- invisible(expr)
+    })
   }))
 
   out
@@ -2186,7 +2210,7 @@ with_delayed_warnings <- function(expr) {
 #Generalized matrix inverse (port of MASS::ginv)
 generalized_inverse <- function(sigma, .try = TRUE) {
 
-  if (!.try) {
+  if (.try) {
     sigmasvd <- svd(sigma)
     pos <- sigmasvd$d > max(1e-9 * sigmasvd$d[1L], 0)
     sigma_inv <- sigmasvd$v[, pos, drop = FALSE] %*% (sigmasvd$d[pos]^(-1) * t(sigmasvd$u[, pos, drop = FALSE]))

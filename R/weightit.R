@@ -27,12 +27,12 @@
 #'   the the unconditional probability (or density) of each unit's observed
 #'   treatment value. If a formula, a generalized linear model will be fit with
 #'   the included predictors, and the inverse of the corresponding weight will
-#'   be used as the standardization factor. Can only be used when `estimand = "ATE"` or with continuous
-#'   treatments. Default is `FALSE` for no
-#'   stabilization. See also the `num.formula` argument at [weightitMSM()].
-#'   For continuous treatments, weights are already stabilized, so setting
-#'   `stabilize = TRUE` will be ignored with a warning (supplying a formula
-#'   still works).
+#'   be used as the standardization factor. The formula can contain
+#'   \CRANpkg{lme4}-style random effects terms (e.g., `~ (1 | school)`) for
+#'   methods that accept them, in which case a multilevel model is fit for the
+#'   numerator. Can only be used when `estimand = "ATE"` or with continuous
+#'   treatments. Default is `FALSE` for no stabilization. See also the
+#'   `stabilize` argument at [weightitMSM()].
 #' @param focal when `estimand` is set to `"ATT"` or `"ATC"`, which group to
 #'   consider the "treated" or "control" group, respectively. This group will not be weighted,
 #'   and the other groups will be weighted to resemble the focal group. If
@@ -406,12 +406,22 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
       stabilize <- FALSE
       num.formula <- NULL
     }
-    else if (is_not_null(num.formula)) {
-      #Censoring time points are stabilized like any other, so a list of numerator
-      #formulas has one entry per entry of `formula.list`, censoring included.
-      .check_num.formula(num.formula, data, env = parent.frame(),
-                         formula.list = list(formula),
-                         stab_arg = "stabilize")
+    else {
+      #Stabilization only makes sense for the ATE: for the other estimands the
+      #numerator is not the marginal probability of the observed treatment, so
+      #dividing by it rescales the treatment groups relative to each other. A
+      #continuous treatment has no estimand to speak of.
+      if (treat.type != "continuous" && estimand != "ATE") {
+        arg::err('{.arg stabilize} can only be supplied when {.code estimand = "ATE"}')
+      }
+
+      if (is_not_null(num.formula)) {
+        #Censoring time points are stabilized like any other, so a list of numerator
+        #formulas has one entry per entry of `formula.list`, censoring included.
+        .check_num.formula(num.formula, data, env = parent.frame(),
+                           formula.list = list(formula),
+                           stab_arg = "stabilize")
+      }
     }
   }
 
@@ -493,7 +503,9 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
     #the censored units; `.num_stab_weights()` neutralizes those so the division is
     #finite. The stabilized weight is then P(C = 0 | V)/P(C = 0 | X) for the units
     #still under observation and exactly 0 for those censored.
-    obj$weights <- obj$weights / .num_stab_weights(sw_obj, censoring = treat.type == "censoring")
+    num.w <- .num_stab_weights(sw_obj, censoring = treat.type == "censoring")
+
+    obj$weights <- obj$weights / num.w
   }
 
   if (is_not_null(method) && is_null(ps)) {
@@ -533,7 +545,18 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
       num.parts <- lapply(num.parts, .invert_num_Mpart,
                           censoring = treat.type == "censoring")
 
-      attr(out, "Mparts.list") <- c(den.parts, num.parts)
+      #Every factor of the weights must be in the stack, since the parts are what
+      #the weights are recomputed from. A numerator that supplies no parts is fine
+      #only when it left the weights alone (e.g., the marginal density of a
+      #continuous treatment, which is estimated by nothing and is exactly 1); when
+      #it did change them (e.g., a mixed model, which has no M-estimation form),
+      #the object cannot support M-estimation at all.
+      if (is_not_null(num.parts)) {
+        attr(out, "Mparts.list") <- c(den.parts, num.parts)
+      }
+      else if (all(num.w == 1)) {
+        attr(out, "Mparts.list") <- den.parts
+      }
     }
     else if (length(den.parts) == 1L) {
       attr(out, "Mparts") <- den.parts[[1L]]
@@ -625,14 +648,13 @@ print.weightit <- function(x, ...) {
   }
 
   if (is_not_null(x[["stabilization"]])) {
-    cat(" - stabilized")
-
-    if (is_not_null(get_varnames(x[["stabilization"]]))) {
-      cat(paste0("; stabilization factors:\n",
-                 sprintf("      %s", word_list(.attr(terms(x[["stabilization"]]), "term.labels"),
-                                               and.or = FALSE))
-      ))
-    }
+    cli::cat_line(
+      " - stabilized",
+      if (is_not_null(get_varnames(x[["stabilization"]]))) {
+        paste0("; stabilization factors:\n",
+               sprintf("      %s", word_list(.attr(terms(x[["stabilization"]]), "term.labels"),
+                                             and.or = FALSE)))
+      })
   }
 
   if (is_not_null(x[["moderator"]])) {

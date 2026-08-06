@@ -7,7 +7,7 @@ weightit2ps <- function(covs, treat, s.weights, subset, estimand, focal,
   p.score <- NULL
   treat_sub <- factor(treat[subset])
 
-  t.lev <- get_treated_level(treat, estimand, focal)
+  t.lev <- .get_treated_level(treat, estimand, focal)
   c.lev <- setdiff(levels(treat_sub), t.lev)
 
   if (is.matrix(ps) || is.data.frame(ps)) {

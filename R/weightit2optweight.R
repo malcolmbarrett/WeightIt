@@ -36,7 +36,7 @@
 #'
 #' ## Censoring Weights
 #'
-#' For censoring weights, requested by wrapping the censoring indicator in [.cens()], `optweight::optweight.svy.fit()` is used rather than `optweight::optweight.fit()`. It solves exactly the required problem: finding weights for the units still under observation whose weighted covariate means equal those of the full at-risk sample, without estimating any weights for the censored units, which receive a weight of 0. `tols` are standardized using the units still under observation. Note the resulting weights have a mean of 1 among those units, whereas the other methods put them on the `1/P(C = 0 | X)` scale; the two differ by a constant factor. M-estimation is not supported.
+#' For censoring weights, requested by wrapping the censoring indicator in [.cens()], \pkgfun{optweight}{optweight.svy.fit} is used rather than `optweight::optweight.fit()`. It solves exactly the required problem: finding weights for the units still under observation whose weighted covariate means equal those of the full at-risk sample, without estimating any weights for the censored units, which receive a weight of 0. `tols` are standardized using the units still under observation. Note the resulting weights have a mean of 1 among those units, whereas the other methods put them on the \eqn{1/P(C = 0 | X)} scale; the two differ by a constant factor. M-estimation is not supported.
 #'
 #' ## Longitudinal Treatments
 #'
@@ -47,8 +47,7 @@
 #'
 #' ## Sampling Weights
 #'
-#' Sampling weights are supported through `s.weights` in all scenarios, but only
-#' for versions of \pkg{optweight} greater than or equal to 1.0.0.
+#' Sampling weights are supported through `s.weights` in all scenarios.
 #'
 #' ## Missing Data
 #'
@@ -124,7 +123,7 @@
 #'
 #' \pkgfun{optweight}{optweight.fit} for the fitting function.
 #'
-#' [`method_entropy`] for entropy balancing, which is a special case of stable balancing weights.
+#' [`method_ebal`] for entropy balancing, which is a special case of stable balancing weights.
 #'
 #' [`method_npcbps`] for npCBPS weighting, which is also a special case of stable balancing weights.
 #'

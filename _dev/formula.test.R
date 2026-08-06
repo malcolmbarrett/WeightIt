@@ -40,7 +40,7 @@
   if (use.br) A$link <- substr(A$link, 4, nchar(A$link))
   # else if (use.bayes) A$link <- substr(A$link, 7, nchar(A$link))
 
-  t.lev <- get_treated_level(treat_sub)
+  t.lev <- .get_treated_level(treat_sub)
   c.lev <- setdiff(levels(treat_sub), t.lev)
 
   ps <- make_df(levels(treat_sub), nrow = length(treat_sub))
@@ -610,7 +610,7 @@
   w <- get_w_from_ps(ps = ps, treat = treat, estimand, focal,
                      stabilize = stabilize, subclass = subclass)
 
-  p.score <- if (treat.type == "binary") ps[[get_treated_level(treat)]] else NULL
+  p.score <- if (treat.type == "binary") ps[[.get_treated_level(treat)]] else NULL
 
   list(w = w, ps = p.score, info = info, fit.obj = fit.list)
 }
@@ -705,7 +705,7 @@
     .formula <- update(.formula, sprintf("I(. == %s) ~ .", focal))
   }
   else {
-    .formula <- update(.formula, sprintf("I(. == %s) ~ .", get_treated_level(treat)))
+    .formula <- update(.formula, sprintf("I(. == %s) ~ .", .get_treated_level(treat)))
   }
 
   tryCatch({verbosely({
@@ -748,7 +748,7 @@
 
   p.score <- {
     if (is_null(dim(ps)) || length(dim(ps)) != 2) ps
-    else ps[[get_treated_level(treat)]]
+    else ps[[.get_treated_level(treat)]]
   }
 
   list(w = w, ps = p.score, fit.obj = fit)

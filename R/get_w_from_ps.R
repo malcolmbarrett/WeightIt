@@ -279,11 +279,14 @@ get_w_from_ps <- function(ps, treat, estimand = "ATE", focal = NULL, treated = N
   focal <- processed.estimand$focal
   assumed.treated <- processed.estimand$treated
 
-  ps_mat <- .ps_to_ps_mat(ps, treat, assumed.treated, treat.type, treated, estimand)
+  ps_mat <- .ps_to_ps_mat(ps, treat, assumed.treated, treated, estimand)
 
   if (nrow(ps_mat) != length(treat)) {
     arg::err("{.arg ps} and {.arg treat} must have the same number of units")
   }
+
+  arg::when_not_null(subclass,
+                     arg::arg_count)
 
   if (is_not_null(subclass)) {
     #Get MMW subclass propensity scores
@@ -362,8 +365,10 @@ get_w_from_ps <- function(ps, treat, estimand = "ATE", focal = NULL, treated = N
   w
 }
 
-.ps_to_ps_mat <- function(ps, treat, assumed.treated = NULL, treat.type = NULL,
+.ps_to_ps_mat <- function(ps, treat, assumed.treated = NULL,
                           treated = NULL, estimand = NULL) {
+
+  treat.type <- get_treat_type(treat)
 
   t.levels <- {
     if (is.factor(treat)) levels(treat)

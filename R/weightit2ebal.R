@@ -242,7 +242,7 @@ weightit2ebal <- function(covs, treat, s.weights, subset, estimand, focal,
     }
   }
 
-  if (tols > 0) {
+  if (any(tols > 0)) {
     sds <- rep.int(1, ncol(covs))
 
     bin.vars <- is_binary_col(covs)
