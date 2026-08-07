@@ -10,6 +10,14 @@
 
 library("WeightIt")
 
+# The `plot()` calls below print a ggplot. Printing one with no device open opens the
+# default device, which outside an interactive session is `pdf()` -- leaving an
+# `Rplots.pdf` behind in the working directory. Send those to the null device instead;
+# interactively the usual device is used and the plots show up as they should.
+if (!interactive()) {
+  grDevices::pdf(NULL)
+}
+
 set.seed(31)
 
 n <- 3000
