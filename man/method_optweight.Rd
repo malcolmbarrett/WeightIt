@@ -39,7 +39,7 @@ For continuous treatments, this method estimates the weights using
 
 \subsection{Censoring Weights}{
 
-For censoring weights, requested by wrapping the censoring indicator in \code{\link[=.cens]{.cens()}}, \code{optweight::optweight.svy.fit()} is used rather than \code{optweight::optweight.fit()}. It solves exactly the required problem: finding weights for the units still under observation whose weighted covariate means equal those of the full at-risk sample, without estimating any weights for the censored units, which receive a weight of 0. \code{tols} are standardized using the units still under observation. Note the resulting weights have a mean of 1 among those units, whereas the other methods put them on the \code{1/P(C = 0 | X)} scale; the two differ by a constant factor. M-estimation is not supported.
+For censoring weights, requested by wrapping the censoring indicator in \code{\link[=.cens]{.cens()}}, \pkgfun{optweight}{optweight.svy.fit} is used rather than \code{optweight::optweight.fit()}. It solves exactly the required problem: finding weights for the units still under observation whose weighted covariate means equal those of the full at-risk sample, without estimating any weights for the censored units, which receive a weight of 0. \code{tols} are standardized using the units still under observation. Note the resulting weights have a mean of 1 among those units, whereas the other methods put them on the \eqn{1/P(C = 0 | X)} scale; the two differ by a constant factor. M-estimation is not supported.
 }
 
 \subsection{Longitudinal Treatments}{
@@ -47,13 +47,13 @@ For censoring weights, requested by wrapping the censoring indicator in \code{\l
 For longitudinal treatments, the weights are the product of the weights
 estimated at each time point. This method is not guaranteed to yield exact
 balance at each time point. \strong{NOTE: the use of stable balancing weights with
-longitudinal treatments has not been validated and should not be done!}
+longitudinal treatments has not been validated and should not be done!} Because of this, \code{\link[=weightitMSM]{weightitMSM()}} errors when this method is
+requested; set \code{weightit.force = TRUE} to bypass that error.
 }
 
 \subsection{Sampling Weights}{
 
-Sampling weights are supported through \code{s.weights} in all scenarios, but only
-for versions of \pkg{optweight} greater than or equal to 1.0.0.
+Sampling weights are supported through \code{s.weights} in all scenarios.
 }
 
 \subsection{Missing Data}{
@@ -103,11 +103,15 @@ identical and it's compatible with \pkg{cobalt}, too.
 
 
 \describe{
+\item{\code{base.weights}}{a vector of base weights, one for each unit. The estimated weights minimize the chosen divergence from the base weights rather than from a vector of 1s, subject to the balance constraints. These can be used to supply previously estimated weights so that the newly estimated weights retain some of the properties of the original weights. Sampling weights should not be passed to \code{base.weights} but can be included in a \code{weightit()} call that includes \code{s.weights}. Can also be supplied as \code{b.weights} or \code{base.weight}.}
+}
+
+\describe{
 \item{\code{moments}}{\code{integer}; the highest power of each covariate to be balanced. For example, if \code{moments = 3}, each covariate, its square, and its cube will be balanced. Can also be a named vector with a value for each covariate (e.g., \code{moments = c(x1 = 2, x2 = 4)}). Values greater than 1 for categorical covariates are ignored. Default is 1 to balance covariate means.
 }
 \item{\code{int}}{\code{logical}; whether first-order interactions of the covariates are to be balanced. Default is \code{FALSE}.
 }
-\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \verb{quantile = list(x1 = c(.25, .5. , .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
+\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \code{quantile = list(x1 = c(.25, .5, .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
 }
 }
 
@@ -198,7 +202,7 @@ Greifer, N. (2020). \emph{Estimating Balancing Weights for Continuous Treatments
 
 \pkgfun{optweight}{optweight.fit} for the fitting function.
 
-\code{\link{method_entropy}} for entropy balancing, which is a special case of stable balancing weights.
+\code{\link{method_ebal}} for entropy balancing, which is a special case of stable balancing weights.
 
 \code{\link{method_npcbps}} for npCBPS weighting, which is also a special case of stable balancing weights.
 }

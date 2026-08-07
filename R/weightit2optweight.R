@@ -43,7 +43,8 @@
 #' For longitudinal treatments, the weights are the product of the weights
 #' estimated at each time point. This method is not guaranteed to yield exact
 #' balance at each time point. **NOTE: the use of stable balancing weights with
-#' longitudinal treatments has not been validated and should not be done!**
+#' longitudinal treatments has not been validated and should not be done!** Because of this, [weightitMSM()] errors when this method is
+#' requested; set `weightit.force = TRUE` to bypass that error.
 #'
 #' ## Sampling Weights
 #'
@@ -65,11 +66,15 @@
 #' @section Additional Arguments:
 #'
 #' \describe{
+#'   \item{`base.weights`}{a vector of base weights, one for each unit. The estimated weights minimize the chosen divergence from the base weights rather than from a vector of 1s, subject to the balance constraints. These can be used to supply previously estimated weights so that the newly estimated weights retain some of the properties of the original weights. Sampling weights should not be passed to `base.weights` but can be included in a `weightit()` call that includes `s.weights`. Can also be supplied as `b.weights` or `base.weight`.}
+#' }
+#'
+#' \describe{
 #'   \item{`moments`}{`integer`; the highest power of each covariate to be balanced. For example, if `moments = 3`, each covariate, its square, and its cube will be balanced. Can also be a named vector with a value for each covariate (e.g., `moments = c(x1 = 2, x2 = 4)`). Values greater than 1 for categorical covariates are ignored. Default is 1 to balance covariate means.
 #'     }
 #'     \item{`int`}{`logical`; whether first-order interactions of the covariates are to be balanced. Default is `FALSE`.
 #'     }
-#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5. , .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
+#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5, .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
 #'     }
 #' }
 #'

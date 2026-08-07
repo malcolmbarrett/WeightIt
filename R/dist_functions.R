@@ -39,7 +39,7 @@ transform_covariates <- function(formula = NULL, data = NULL, method = "mahalano
         else cov.wt(X[!discarded, , drop = FALSE], s.weights[!discarded])[["cov"]]
       }
     }
-    else if (all(dim(var) == ncol(X))) {
+    else if (!all(dim(var) == ncol(X))) {
       arg::err("when {.arg var} is not {.val {list(NULL)}}, it must be a covariance matrix with as many entries as supplied variables")
     }
 

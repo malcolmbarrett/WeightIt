@@ -46,7 +46,8 @@ For censoring weights, requested by wrapping the censoring indicator in \code{\l
 For longitudinal treatments, the weights are the product of the weights
 estimated at each time point. This method is not guaranteed to yield exact
 balance at each time point. \strong{NOTE: the use of entropy balancing with
-longitudinal treatments has not been validated and should not be done!}
+longitudinal treatments has not been validated and should not be done!} Because of this, \code{\link[=weightitMSM]{weightitMSM()}} errors when this method is
+requested; set \code{weightit.force = TRUE} to bypass that error.
 }
 
 \subsection{Sampling Weights}{
@@ -94,24 +95,24 @@ the covariates, and it attains a semi-parametric efficiency bound when both
 are true. Entropy balancing will always yield exact mean balance on the
 included terms unless an imbalance tolerance is requested with \code{tols}.
 
-When \code{tols} is greater than 0, inexact balance is allowed on the covariates. This can improve precision while allowing a small amount of bias in. The optimization problem is an L1 regularization problem and is solved using the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA).
+When \code{tols} is greater than 0, inexact balance is allowed on the covariates. This can improve precision while allowing a small amount of bias. The optimization problem is an L1 regularization problem and is solved using the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA).
 }
 \section{Additional Arguments}{
 
 
 \describe{
-\item{\code{base.weights}}{a vector of base weights, one for each unit. These correspond to the base weights $q$ in Hainmueller (2012). The estimated weights minimize the Kullback entropy divergence from the base weights, defined as \eqn{\sum w \log(w/q)}, subject to exact balance constraints. These can be used to supply previously estimated weights so that the newly estimated weights retain the some of the properties of the original weights while ensuring the balance constraints are met. Sampling weights should not be passed to \code{base.weights} but can be included in a \code{weightit()} call that includes \code{s.weights}.}
+\item{\code{base.weights}}{a vector of base weights, one for each unit. These correspond to the base weights \eqn{q} in Hainmueller (2012). The estimated weights minimize the Kullback entropy divergence from the base weights, defined as \eqn{\sum w \log(w/q)}, subject to exact balance constraints. These can be used to supply previously estimated weights so that the newly estimated weights retain some of the properties of the original weights while ensuring the balance constraints are met. Sampling weights should not be passed to \code{base.weights} but can be included in a \code{weightit()} call that includes \code{s.weights}. Can also be supplied as \code{b.weights} or \code{base.weight}.}
 \item{\code{reltol}}{the relative tolerance for convergence of the optimization. Passed to the \code{control} argument of \code{optim()}. Default is \code{1e-10}.}
-\item{\code{maxit}}{the maximum number of iterations for convergence of the optimization. Passed to the \code{control} argument of \code{optim()}. Default is 1000 for binary and multi-category treatments and 10000 for continuous and longitudinal treatments.}
-\item{\code{solver}}{the solver to use to estimate the parameters. Allowable options include \code{"multiroot"} to use \pkgfun{rootSolve}{multiroot} and \code{"optim"} to use \code{\link[stats:optim]{stats::optim()}}. \code{"multiroot"} is the default when \pkg{rootSolve} is installed, as it tends to be much faster and more accurate; otherwise, \code{"optim"} is the default and requires no dependencies. Regardless of \code{solver}, the output of \code{optim()} is returned when \code{include.obj = TRUE} (see below).}
+\item{\code{maxit}}{the maximum number of iterations for convergence of the optimization. Passed to the \code{control} argument of \code{optim()}. Default is 10000.}
+\item{\code{solver}}{the solver to use to estimate the parameters. Allowable options include \code{"multiroot"} to use \pkgfun{rootSolve}{multiroot} and \code{"optim"} to use \code{\link[stats:optim]{stats::optim()}}. \code{"multiroot"} is the default when \pkg{rootSolve} is installed, as it tends to be much faster and more accurate; otherwise, \code{"optim"} is the default and requires no dependencies. The output of whichever solver was used is returned when \code{include.obj = TRUE} (see below).}
 \item{\code{moments}}{\code{integer}; the highest power of each covariate to be balanced. For example, if \code{moments = 3}, each covariate, its square, and its cube will be balanced. Can also be a named vector with a value for each covariate (e.g., \code{moments = c(x1 = 2, x2 = 4)}). Values greater than 1 for categorical covariates are ignored. Default is 1 to balance covariate means.
 }
 \item{\code{int}}{\code{logical}; whether first-order interactions of the covariates are to be balanced. Default is \code{FALSE}.
 }
-\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \verb{quantile = list(x1 = c(.25, .5. , .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
+\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \code{quantile = list(x1 = c(.25, .5, .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
 }
 \item{\code{tols}}{a number corresponding to the maximum allowed standardized mean difference (for binary and multi-category treatments) or treatment-covariate correlation (for continuous treatments) allowed. Default is 0 for exact balance.}
-\item{\code{d.moments}}{\code{integer}; with continuous treatments, the number of moments of the treatment and covariate distributions that are constrained to be the same in the weighted sample as in the original sample. For example, setting \code{d.moments = 3} ensures that the mean, variance, and skew of the treatment and covariates are the same in the weighted sample as in the unweighted sample. \code{d.moments} should be greater than or equal to \code{moments} and will be automatically set accordingly if not (or if not specified). Vegetabile et al. (2021) recommend setting \code{d.moments = 3}, even if \code{moments} is less than 3. This argument corresponds to the tuning parameters \eqn{r} and \eqn{s} in Vegetabile et al. (2021) (which here are set to be equal). Ignored for binary and multi-category treatments.}
+\item{\code{d.moments}}{\code{integer}; with continuous treatments, the number of moments of the treatment and covariate distributions that are constrained to be the same in the weighted sample as in the original sample. For example, setting \code{d.moments = 3} ensures that the mean, variance, and skew of the treatment and covariates are the same in the weighted sample as in the unweighted sample. \code{d.moments} acts as a floor: the number of moments held for each covariate is the larger of \code{d.moments} and that covariate's entry in \code{moments}, so a value less than or equal to \code{moments} has no effect on the covariates and a larger one raises them all, including any not named when \code{moments} is supplied as a per-covariate vector. \code{d.moments} alone controls how many moments of the treatment are held; the default of 1 holds only its mean. Vegetabile et al. (2021) recommend setting \code{d.moments = 3}, even if \code{moments} is less than 3. This argument corresponds to the tuning parameters \eqn{r} and \eqn{s} in Vegetabile et al. (2021) (which here are set to be equal). Ignored for binary and multi-category treatments.}
 }
 
 The \code{stabilize} argument is ignored; in the past it would reduce the
@@ -123,7 +124,7 @@ minimize the variance of the weights subject to balance constraints, use
 \section{Additional Outputs}{
 
 \describe{
-\item{\code{obj}}{When \code{include.obj = TRUE}, the output of the call to \code{\link[=optim]{optim()}}, which contains the dual variables and convergence information. For ATE fits or with multi-category treatments, a list of \code{optim()} outputs, one for each weighted group.}
+\item{\code{obj}}{When \code{include.obj = TRUE}, the output of the call to the solver (see \code{solver} above), which contains the dual variables and convergence information. For ATE fits or with multi-category treatments, a list of such outputs, one for each weighted group.}
 }
 }
 
@@ -199,5 +200,5 @@ Vegetabile, B. G., Griffin, B. A., Coffman, D. L., Cefalu, M., Robbins, M. W., &
 \code{\link[=weightit]{weightit()}}, \code{\link[=weightitMSM]{weightitMSM()}}
 
 \link{method_ipt} and \link{method_cbps} for inverse probability tilting and CBPS,
-which work similarly. \link{method_optweight} for another implementation of entropy balancing (by setting \code{"norm = entropy"}).
+which work similarly. \link{method_optweight} for another implementation of entropy balancing (by setting \code{norm = "entropy"}).
 }

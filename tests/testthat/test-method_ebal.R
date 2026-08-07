@@ -416,3 +416,68 @@ test_that("Continuous treatment: M-estimation parts assemble into a variance", {
   # actually contributing rather than being dropped
   expect_not_equal(unname(se_asympt), unname(se_hc0))
 })
+
+test_that("Continuous treatment: d.moments is a floor on the target moments", {
+  skip_on_cran()
+
+  eps <- if (capabilities("long.double")) 1e-5 else 1e-3
+
+  test_data <- readRDS(test_path("fixtures", "test_data.rds"))
+
+  covs <- c("X1", "X2", "X3", "X4")
+
+  # How many leading moments of `v` the weights hold at their unweighted values
+  n_held <- function(W, v) {
+    x <- test_data[[v]]
+    held <- vapply(1:3, function(k) {
+      abs(weighted.mean(x^k, W$weights) - mean(x^k)) / sd(x^k) < 1e-6
+    }, logical(1L))
+
+    as.integer(sum(cumprod(held)))
+  }
+
+  fit <- function(...) {
+    weightit(Ac ~ X1 + X2 + X3 + X4, data = test_data, method = "ebal", ...)
+  }
+
+  # `moments` alone: each covariate's target moments are its own entry, and the
+  # covariates not named get the default of 1
+  W <- fit(moments = c(X1 = 2, X2 = 3))
+  expect_identical(vapply(covs, n_held, 0L, W = W),
+                   c(X1 = 2L, X2 = 3L, X3 = 1L, X4 = 1L))
+
+  # `d.moments` at or below every entry of `moments` changes nothing for the
+  # covariates -- it is a floor, not a replacement
+  W2 <- fit(moments = c(X1 = 2, X2 = 3), d.moments = 2)
+  expect_identical(vapply(covs, n_held, 0L, W = W2),
+                   c(X1 = 2L, X2 = 3L, X3 = 1L, X4 = 1L))
+
+  # Raising it above an entry raises that covariate, and reaches the covariates
+  # `moments` does not name. This used to collapse every covariate to its mean,
+  # i.e. asking for more moments produced fewer.
+  W3 <- fit(moments = c(X1 = 2, X2 = 3), d.moments = 3)
+  expect_identical(vapply(covs, n_held, 0L, W = W3),
+                   c(X1 = 3L, X2 = 3L, X3 = 3L, X4 = 3L))
+
+  # `d.moments` governs the treatment on its own; `moments` does not raise it
+  n_held_treat <- function(W) {
+    a <- test_data$Ac
+    as.integer(sum(cumprod(vapply(1:3, function(k) {
+      abs(weighted.mean(a^k, W$weights) - mean(a^k)) / sd(a^k) < 1e-6
+    }, logical(1L)))))
+  }
+
+  expect_identical(n_held_treat(W), 1L)
+  expect_identical(n_held_treat(W2), 2L)
+  expect_identical(n_held_treat(W3), 3L)
+
+  # The treatment-covariate correlations follow `moments`, not `d.moments`: X1's
+  # cube is held to its target above but its correlation with the treatment is
+  # not driven to zero
+  wcor <- function(W, v, k) {
+    abs(cov.wt(cbind(test_data$Ac, test_data[[v]]^k), wt = W$weights, cor = TRUE)$cor[1L, 2L])
+  }
+
+  expect_lt(wcor(W3, "X1", 2L), 1e-6)
+  expect_gt(wcor(W3, "X1", 3L), 1e-3)
+})

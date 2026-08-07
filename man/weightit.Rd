@@ -43,10 +43,10 @@ method and what literature to read to interpret these estimands.}
 
 \item{stabilize}{whether or not and how to stabilize the weights. If \code{TRUE},
 each unit's weight will be multiplied by a stabilization factor, which is
-the the unconditional probability (or density) of each unit's observed
+the unconditional probability (or density) of each unit's observed
 treatment value. If a formula, a generalized linear model will be fit with
 the included predictors, and the inverse of the corresponding weight will
-be used as the standardization factor. The formula can contain
+be used as the stabilization factor. The formula can contain
 \CRANpkg{lme4}-style random effects terms (e.g., \code{~ (1 | school)}) for
 methods that accept them, in which case a multilevel model is fit for the
 numerator. Can only be used when \code{estimand = "ATE"} or with continuous
@@ -64,7 +64,7 @@ weighting is to be done within categories or a one-sided formula with the
 stratifying variable on the right-hand side. For example, if \code{by = "gender"} or \code{by = ~gender},
 a separate propensity score model or
 optimization will occur within each level of the variable \code{"gender"}. Only
-one \code{by} variable is allowed; to stratify by multiply variables
+one \code{by} variable is allowed; to stratify by multiple variables
 simultaneously, create a new variable that is a full cross of those
 variables using \code{\link[=interaction]{interaction()}}.}
 
@@ -78,7 +78,8 @@ is a user-supplied function, and the propensity scores will be used to
 create weights. \code{formula} must include the treatment variable in \code{data},
 but the listed covariates will play no role in the weight estimation. Using
 \code{ps} is similar to calling \code{\link[=get_w_from_ps]{get_w_from_ps()}} directly, but produces a full
-\code{weightit} object rather than just producing weights.}
+\code{weightit} object rather than just producing weights. See \code{\link{method_ps}} for
+the accepted formats and the additional arguments available.}
 
 \item{missing}{\code{character}; how missing data should be handled. The options
 and defaults depend on the \code{method} used. Ignored if no missing data is
@@ -116,7 +117,7 @@ A \code{weightit} object with the following elements:
 \item{estimand}{The estimand requested.}
 \item{method}{The weight estimation method specified.}
 \item{ps}{The estimated or provided propensity scores. Estimated propensity scores are returned for binary treatments and only when \code{method} is one that estimates propensity scores. The propensity score corresponds to the predicted probability of being treated; see section \emph{\code{estimand} and \code{focal}} in Details for how the treated group is determined.}
-\item{s.weights}{The provided sampling weights, or a vector of 1s of none are provided.}
+\item{s.weights}{The provided sampling weights, or a vector of 1s if none are provided.}
 \item{focal}{The focal treatment level if the ATT or ATC was requested.}
 \item{by}{A data frame containing the \code{by} variable when specified.}
 \item{obj}{When \code{include.obj = TRUE}, the fit object.}
@@ -151,7 +152,7 @@ are allowed, and whether sampling weights are allowed.\tabular{ll}{
    \code{\link[=method_glm]{"glm"}} \tab Propensity score weighting using generalized linear models \cr
    \code{\link[=method_gbm]{"gbm"}} \tab Propensity score weighting using generalized boosted modeling \cr
    \code{\link[=method_cbps]{"cbps"}} \tab Covariate Balancing Propensity Score weighting \cr
-   \code{\link[=method_npcbps]{"npcbps"}} \tab Non-parametric Covariate Balancing Propensity Score weighting \cr
+   \code{\link[=method_npcbps]{"npcbps"}} \tab Nonparametric Covariate Balancing Propensity Score weighting \cr
    \code{\link[=method_ebal]{"ebal"}} \tab Entropy balancing \cr
    \code{\link[=method_ipt]{"ipt"}} \tab Inverse probability tilting \cr
    \code{\link[=method_optweight]{"optweight"}} \tab Stable balancing weights \cr

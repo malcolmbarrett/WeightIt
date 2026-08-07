@@ -41,7 +41,7 @@ as.weightitMSM(x, ...)
 \item{\dots}{additional arguments. These must be named. They will be included
 in the output object.}
 
-\item{covs}{an optional \code{data.frame} of covariates. For using \pkg{WeightIt}
+\item{covs}{an optional data frame of covariates. For using \pkg{WeightIt}
 functions, this is not necessary, but for use with \pkg{cobalt} it is. Note
 that when using with a \code{weightit.fit} object, this should not be the matrix
 supplied to the \code{covs} argument of \code{weightit.fit()} unless there are no
@@ -62,8 +62,7 @@ unit.}
 
 \item{treat.list}{a list of treatment statuses at each time point.}
 
-\item{covs.list}{an optional list of \code{data.frame}s of covariates of
-covariates at each time point. For using \pkg{WeightIt} functions, this is
+\item{covs.list}{an optional list of data frames of covariates at each time point. For using \pkg{WeightIt} functions, this is
 not necessary, but for use with \pkg{cobalt} it is.}
 
 \item{ps.list}{an optional list of \code{numeric} vectors of propensity scores at

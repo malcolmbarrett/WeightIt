@@ -38,7 +38,7 @@ See example at \code{\link{method_user}}.
 Older versions would drop all columns that only had one value. With
 \code{with.intercept = FALSE}, if only one column has only one value, it will not
 be removed, and it will function as though there was an intercept present; if
-more than only column has only one value, only the first one will remain.
+more than one column has only one value, only the first one will remain.
 }
 \examples{
 set.seed(1234)
@@ -49,9 +49,9 @@ c3 <- rnorm(n)
 c4 <- 10 * c3
 mat <- data.frame(c1, c2, c3, c4)
 
-make_full_rank(mat) #leaves c2 and c4
+make_full_rank(mat) #keeps c1 and c3
 
-make_full_rank(mat, with.intercept = FALSE) #leaves c1, c2, and c4
+make_full_rank(mat, with.intercept = FALSE) #keeps c1, c2, and c3
 }
 \seealso{
 \code{\link{method_user}}, \code{\link[=model.matrix]{model.matrix()}}

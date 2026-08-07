@@ -42,7 +42,8 @@
 #' For longitudinal treatments, the weights are the product of the weights
 #' estimated at each time point. This method is not guaranteed to yield exact
 #' balance at each time point. **NOTE: the use of entropy balancing with
-#' longitudinal treatments has not been validated and should not be done!**
+#' longitudinal treatments has not been validated and should not be done!** Because of this, [weightitMSM()] errors when this method is
+#' requested; set `weightit.force = TRUE` to bypass that error.
 #'
 #' ## Sampling Weights
 #'
@@ -66,18 +67,18 @@
 #' @section Additional Arguments:
 #'
 #' \describe{
-#'   \item{`base.weights`}{a vector of base weights, one for each unit. These correspond to the base weights $q$ in Hainmueller (2012). The estimated weights minimize the Kullback entropy divergence from the base weights, defined as \eqn{\sum w \log(w/q)}, subject to exact balance constraints. These can be used to supply previously estimated weights so that the newly estimated weights retain the some of the properties of the original weights while ensuring the balance constraints are met. Sampling weights should not be passed to `base.weights` but can be included in a `weightit()` call that includes `s.weights`.}
+#'   \item{`base.weights`}{a vector of base weights, one for each unit. These correspond to the base weights \eqn{q} in Hainmueller (2012). The estimated weights minimize the Kullback entropy divergence from the base weights, defined as \eqn{\sum w \log(w/q)}, subject to exact balance constraints. These can be used to supply previously estimated weights so that the newly estimated weights retain some of the properties of the original weights while ensuring the balance constraints are met. Sampling weights should not be passed to `base.weights` but can be included in a `weightit()` call that includes `s.weights`. Can also be supplied as `b.weights` or `base.weight`.}
 #'   \item{`reltol`}{the relative tolerance for convergence of the optimization. Passed to the `control` argument of `optim()`. Default is `1e-10`.}
-#'   \item{`maxit`}{the maximum number of iterations for convergence of the optimization. Passed to the `control` argument of `optim()`. Default is 1000 for binary and multi-category treatments and 10000 for continuous and longitudinal treatments.}
-#'   \item{`solver`}{the solver to use to estimate the parameters. Allowable options include `"multiroot"` to use \pkgfun{rootSolve}{multiroot} and `"optim"` to use [stats::optim()]. `"multiroot"` is the default when \pkg{rootSolve} is installed, as it tends to be much faster and more accurate; otherwise, `"optim"` is the default and requires no dependencies. Regardless of `solver`, the output of `optim()` is returned when `include.obj = TRUE` (see below).}
+#'   \item{`maxit`}{the maximum number of iterations for convergence of the optimization. Passed to the `control` argument of `optim()`. Default is 10000.}
+#'   \item{`solver`}{the solver to use to estimate the parameters. Allowable options include `"multiroot"` to use \pkgfun{rootSolve}{multiroot} and `"optim"` to use [stats::optim()]. `"multiroot"` is the default when \pkg{rootSolve} is installed, as it tends to be much faster and more accurate; otherwise, `"optim"` is the default and requires no dependencies. The output of whichever solver was used is returned when `include.obj = TRUE` (see below).}
 #'   \item{`moments`}{`integer`; the highest power of each covariate to be balanced. For example, if `moments = 3`, each covariate, its square, and its cube will be balanced. Can also be a named vector with a value for each covariate (e.g., `moments = c(x1 = 2, x2 = 4)`). Values greater than 1 for categorical covariates are ignored. Default is 1 to balance covariate means.
 #'     }
 #'     \item{`int`}{`logical`; whether first-order interactions of the covariates are to be balanced. Default is `FALSE`.
 #'     }
-#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5. , .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
+#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5, .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
 #'     }
 #'     \item{`tols`}{a number corresponding to the maximum allowed standardized mean difference (for binary and multi-category treatments) or treatment-covariate correlation (for continuous treatments) allowed. Default is 0 for exact balance.}
-#'   \item{`d.moments`}{`integer`; with continuous treatments, the number of moments of the treatment and covariate distributions that are constrained to be the same in the weighted sample as in the original sample. For example, setting `d.moments = 3` ensures that the mean, variance, and skew of the treatment and covariates are the same in the weighted sample as in the unweighted sample. `d.moments` should be greater than or equal to `moments` and will be automatically set accordingly if not (or if not specified). Vegetabile et al. (2021) recommend setting `d.moments = 3`, even if `moments` is less than 3. This argument corresponds to the tuning parameters \eqn{r} and \eqn{s} in Vegetabile et al. (2021) (which here are set to be equal). Ignored for binary and multi-category treatments.}
+#'   \item{`d.moments`}{`integer`; with continuous treatments, the number of moments of the treatment and covariate distributions that are constrained to be the same in the weighted sample as in the original sample. For example, setting `d.moments = 3` ensures that the mean, variance, and skew of the treatment and covariates are the same in the weighted sample as in the unweighted sample. `d.moments` acts as a floor: the number of moments held for each covariate is the larger of `d.moments` and that covariate's entry in `moments`, so a value less than or equal to `moments` has no effect on the covariates and a larger one raises them all, including any not named when `moments` is supplied as a per-covariate vector. `d.moments` alone controls how many moments of the treatment are held; the default of 1 holds only its mean. Vegetabile et al. (2021) recommend setting `d.moments = 3`, even if `moments` is less than 3. This argument corresponds to the tuning parameters \eqn{r} and \eqn{s} in Vegetabile et al. (2021) (which here are set to be equal). Ignored for binary and multi-category treatments.}
 #' }
 #'
 #' The `stabilize` argument is ignored; in the past it would reduce the
@@ -87,7 +88,7 @@
 #'
 #' @section Additional Outputs:
 #' \describe{
-#'   \item{`obj`}{When `include.obj = TRUE`, the output of the call to [optim()], which contains the dual variables and convergence information. For ATE fits or with multi-category treatments, a list of `optim()` outputs, one for each weighted group.}
+#'   \item{`obj`}{When `include.obj = TRUE`, the output of the call to the solver (see `solver` above), which contains the dual variables and convergence information. For ATE fits or with multi-category treatments, a list of such outputs, one for each weighted group.}
 #' }
 #'
 #' @details
@@ -113,12 +114,12 @@
 #' are true. Entropy balancing will always yield exact mean balance on the
 #' included terms unless an imbalance tolerance is requested with `tols`.
 #'
-#' When `tols` is greater than 0, inexact balance is allowed on the covariates. This can improve precision while allowing a small amount of bias in. The optimization problem is an L1 regularization problem and is solved using the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA).
+#' When `tols` is greater than 0, inexact balance is allowed on the covariates. This can improve precision while allowing a small amount of bias. The optimization problem is an L1 regularization problem and is solved using the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA).
 #'
 #' @seealso [weightit()], [weightitMSM()]
 #'
 #' [method_ipt] and [method_cbps] for inverse probability tilting and CBPS,
-#' which work similarly. [method_optweight] for another implementation of entropy balancing (by setting `"norm = entropy"`).
+#' which work similarly. [method_optweight] for another implementation of entropy balancing (by setting `norm = "entropy"`).
 #'
 #' @references
 #'
@@ -352,7 +353,7 @@ weightit2ebal <- function(covs, treat, s.weights, subset, estimand, focal,
     w <- W(opt.out$par, Q, C)
 
     if (opt.out$convergence != 0) {
-      arg::wrn("the optimization failed to converge in the alotted number of iterations. Try increasing {.arg maxit}")
+      arg::wrn("the optimization failed to converge in the allotted number of iterations. Try increasing {.arg maxit}")
     }
     else if (any(abs(opt.out$gradient) > tols + 1e-4)) {
       arg::wrn("the estimated weights do not balance the covariates, indicating the optimization arrived at a degenerate solution. Try decreasing the number of variables supplied to the optimization")
@@ -598,7 +599,7 @@ weightit2ebal.cens <- function(covs, treat, s.weights, subset, missing, verbose,
     w <- W(opt.out$par, Q, C)
 
     if (opt.out$convergence != 0) {
-      arg::wrn("the optimization failed to converge in the alotted number of iterations. Try increasing {.arg maxit}")
+      arg::wrn("the optimization failed to converge in the allotted number of iterations. Try increasing {.arg maxit}")
     }
     else if (any(abs(opt.out$gradient) > tols + 1e-4)) {
       arg::wrn("the estimated weights do not balance the covariates, indicating the optimization arrived at a degenerate solution. Try decreasing the number of variables supplied to the optimization")
@@ -717,8 +718,25 @@ weightit2ebal.cont <- function(covs, treat, s.weights, subset, missing, verbose,
                      colnames(bal.covs))
   }
   else {
+    #`d.moments` raises the number of moments held to their unweighted values for
+    #every covariate, so it is a floor applied elementwise to `moments`.
+    #
+    #`moments` first in `pmax()`, not second: `pmax()` takes its attributes from
+    #its first argument, so `pmax(d.moments, moments)` returns a bare vector.
+    #Losing the names means `.apply_moments_int_quantile()` can match no covariate
+    #at all and every one falls back to `moments_default`, which the same call
+    #drops to 1 -- constraining only the covariate means, i.e. fewer moments than
+    #`d.moments` asked for and fewer than were held without it.
+    #
+    #`moments_default` is raised too, so that `d.moments` reaches the covariates
+    #that a per-covariate `moments` vector does not name.
+    d.moments.by.cov <- pmax(moments, d.moments)
+
+    attr(d.moments.by.cov, "moments_default") <-
+      max(d.moments, .attr(moments, "moments_default") %or% 1L)
+
     d.covs <- covs |>
-      .apply_moments_int_quantile(moments = pmax(d.moments, moments),
+      .apply_moments_int_quantile(moments = d.moments.by.cov,
                                   int = ...get("int")) |>
       scale_w(s.weights) |>
       .make_covs_full_rank()
@@ -825,7 +843,7 @@ weightit2ebal.cont <- function(covs, treat, s.weights, subset, missing, verbose,
     w <- W(opt.out$par, Q, C)
 
     if (opt.out$convergence != 0) {
-      arg::wrn("the optimization failed to converge in the alotted number of iterations. Try increasing {.arg maxit}")
+      arg::wrn("the optimization failed to converge in the allotted number of iterations. Try increasing {.arg maxit}")
     }
     else if (any(abs(opt.out$gradient) > tols + 1e-4)) {
       arg::wrn("the estimated weights do not balance the covariates, indicating the optimization arrived at a degenerate solution. Try decreasing the number of variables supplied to the optimization")

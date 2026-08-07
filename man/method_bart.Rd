@@ -74,8 +74,10 @@ Stan and prior options in a \code{stan_args} list; see \pkgfun{stan4bart}{stan4b
 For convenience, \code{bart2()}-style arguments are translated to their \code{stan4bart()}
 equivalents when supplied (e.g., \code{n.chains} to \code{chains}, \code{n.threads} to \code{cores},
 and BART hyperparameters like \code{n.trees} to \code{bart_args}), so the same argument
-names can be used with or without random effects. As with the single-level
-case, M-estimation is not supported.
+names can be used with or without random effects. Only the arguments described
+here are passed on; anything else, including the \code{bart2()} arguments listed as
+exceptions in \emph{Additional Arguments} below, is ignored. As with the
+single-level case, M-estimation is not supported.
 }
 
 \subsection{Censoring Weights}{
@@ -149,10 +151,16 @@ call \code{set.seed()}.
 All arguments to \pkgfun{dbarts}{bart2} can be passed through \code{weightit()}
 or \code{weightitMSM()}, with the following exceptions:
 \itemize{
-\item \code{test}, \code{weights},\code{subset}, \code{offset.test} are ignored
-\item \code{combine.chains} is always set to \code{TRUE}
-\item \code{sampleronly} is always set to \code{FALSE}
+\item \code{test}, \code{weights}, \code{subset}, \code{offset.test}, and \code{samplerOnly} are ignored
+\item \code{combineChains} is always set to \code{TRUE}
+\item \code{keepCall} is always set to \code{FALSE}
+\item \code{verbose} is always set to \code{FALSE} (use \code{weightit()}'s own \code{verbose} argument
+instead)
 }
+
+When the model \code{formula} contains random effects terms, \pkgfun{stan4bart}{stan4bart}
+is used instead of \code{bart2()}, and the arguments it accepts differ; see
+\emph{Multilevel Treatment Models} below.
 
 See also the \emph{Reproducibility} section below for information on using the \code{seed} argument.
 

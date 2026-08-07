@@ -775,7 +775,7 @@
   d <- dim(x)
 
   if (length(d) != 2L) {
-    arg::err("{.arg x} must be coefficient matrix/data frame")
+    arg::err("{.arg x} must be a coefficient matrix or data frame")
   }
 
   nm <- colnames(x)

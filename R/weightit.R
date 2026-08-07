@@ -24,10 +24,10 @@
 #'   method and what literature to read to interpret these estimands.
 #' @param stabilize whether or not and how to stabilize the weights. If `TRUE`,
 #'   each unit's weight will be multiplied by a stabilization factor, which is
-#'   the the unconditional probability (or density) of each unit's observed
+#'   the unconditional probability (or density) of each unit's observed
 #'   treatment value. If a formula, a generalized linear model will be fit with
 #'   the included predictors, and the inverse of the corresponding weight will
-#'   be used as the standardization factor. The formula can contain
+#'   be used as the stabilization factor. The formula can contain
 #'   \CRANpkg{lme4}-style random effects terms (e.g., `~ (1 | school)`) for
 #'   methods that accept them, in which case a multilevel model is fit for the
 #'   numerator. Can only be used when `estimand = "ATE"` or with continuous
@@ -43,7 +43,7 @@
 #'   stratifying variable on the right-hand side. For example, if `by = "gender"` or `by = ~gender`,
 #'   a separate propensity score model or
 #'   optimization will occur within each level of the variable `"gender"`. Only
-#'   one `by` variable is allowed; to stratify by multiply variables
+#'   one `by` variable is allowed; to stratify by multiple variables
 #'   simultaneously, create a new variable that is a full cross of those
 #'   variables using [interaction()].
 #' @param s.weights an optional vector of sampling weights or the name of a variable in
@@ -55,7 +55,8 @@
 #'   create weights. `formula` must include the treatment variable in `data`,
 #'   but the listed covariates will play no role in the weight estimation. Using
 #'   `ps` is similar to calling [get_w_from_ps()] directly, but produces a full
-#'   `weightit` object rather than just producing weights.
+#'   `weightit` object rather than just producing weights. See [`method_ps`] for
+#'   the accepted formats and the additional arguments available.
 #' @param missing `character`; how missing data should be handled. The options
 #'   and defaults depend on the `method` used. Ignored if no missing data is
 #'   present. It should be noted that multiple imputation outperforms all
@@ -88,7 +89,7 @@
 #' \item{estimand}{The estimand requested.}
 #' \item{method}{The weight estimation method specified.}
 #' \item{ps}{The estimated or provided propensity scores. Estimated propensity scores are returned for binary treatments and only when `method` is one that estimates propensity scores. The propensity score corresponds to the predicted probability of being treated; see section *`estimand` and `focal`* in Details for how the treated group is determined.}
-#' \item{s.weights}{The provided sampling weights, or a vector of 1s of none are provided.}
+#' \item{s.weights}{The provided sampling weights, or a vector of 1s if none are provided.}
 #' \item{focal}{The focal treatment level if the ATT or ATC was requested.}
 #' \item{by}{A data frame containing the `by` variable when specified.}
 #' \item{obj}{When `include.obj = TRUE`, the fit object.}
@@ -118,7 +119,7 @@
 #' | [`"glm"`][method_glm] | Propensity score weighting using generalized linear models |
 #' | [`"gbm"`][method_gbm] | Propensity score weighting using generalized boosted modeling |
 #' | [`"cbps"`][method_cbps] | Covariate Balancing Propensity Score weighting |
-#' | [`"npcbps"`][method_npcbps]| Non-parametric Covariate Balancing Propensity Score weighting |
+#' | [`"npcbps"`][method_npcbps]| Nonparametric Covariate Balancing Propensity Score weighting |
 #' | [`"ebal"`][method_ebal] | Entropy balancing |
 #' | [`"ipt"`][method_ipt] | Inverse probability tilting |
 #' | [`"optweight"`][method_optweight] | Stable balancing weights |

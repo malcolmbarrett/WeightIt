@@ -1170,13 +1170,19 @@ test_that("weightitMSM separates censoring from treatment models", {
                      include.obj = TRUE)
   })
 
-  # treat.list and covs.list describe treatments only
-  expect_length(W$treat.list, 3L)
-  expect_named(W$treat.list, c("A_1", "A_2", "A_3"))
-  expect_length(W$cens.list, 1L)
-  expect_named(W$cens.list, "C_2")
-  expect_equal(unname(W$cens.time), 3L)
+  # treat.list and covs.list hold every model, censoring included and in place
+  expect_length(W$treat.list, 4L)
+  expect_named(W$treat.list, c("A_1", "A_2", "C_2", "A_3"))
+  expect_length(W$covs.list, 4L)
+  expect_identical(unname(vapply(W$treat.list, get_treat_type, character(1L))),
+                   c("binary", "binary", "censoring", "binary"))
   expect_identical(colnames(W$at.risk), c("A_1", "A_2", "C_2", "A_3"))
+
+  # The separate censoring components are gone
+  expect_null(W$cens.list)
+  expect_null(W$cens.covs.list)
+  expect_null(W$cens.formula.list)
+  expect_null(W$cens.time)
 
   # formula.list round-trips with the marker intact
   expect_length(W$formula.list, 4L)
@@ -1185,18 +1191,19 @@ test_that("weightitMSM separates censoring from treatment models", {
   expect_true(all(W$weights[!cens] > 0))
   expect_false(anyNA(W$weights))
 
-  expect_output(print(W), "censoring")
   expect_no_condition(summary(W))
 
-  # The censoring models get their own covariate listing, as the treatment models do
-  expect_output(print(W), "censoring covariates")
-  expect_output(print(W), "C_2: X1_1, X2_1, A_1")
+  # A censoring model is listed among the treatments, in place, with its covariates
+  # in the matching position of the covariate listing
+  expect_output(print(W), "time 3 \\(C_2\\): censoring \\(IPCW\\)")
+  expect_output(print(W), "time 3 \\(C_2\\): X1_1, X2_1, A_1")
+  expect_output(print(W), "time 4 \\(A_3\\): 2-category")
 
-  # ...and none appears when there is no censoring model (`d` has NAs in `A_3` for
-  # the censored units, so use the untouched data here)
+  # ...and nothing about censoring appears when there is no censoring model (`d` has
+  # NAs in `A_3` for the censored units, so use the untouched data here)
   W_nocens <- weightitMSM(msm_cens_formulas[-3L], data = msmdata, method = "glm")
   expect_output(print(W_nocens), "covariates")
-  expect_failure(expect_output(print(W_nocens), "censoring covariates"))
+  expect_failure(expect_output(print(W_nocens), "censoring"))
 })
 
 test_that("each model is fit only among the units under observation", {
@@ -1321,7 +1328,7 @@ test_that("multiple censoring time points give nested risk sets", {
                         A_3 ~ X1_2 + X2_2 + A_2),
                    data = d, method = "glm", include.obj = TRUE)
 
-  expect_equal(unname(W$cens.time), c(2L, 4L))
+  expect_identical(unname(which(is_cens_treat(W$treat.list))), c(2L, 4L))
   expect_length(attr(W, "Mparts.list"), 5L)
 
   # Once censored, always censored
@@ -1450,7 +1457,7 @@ test_that("weightitMSM accepts an empty censoring formula", {
   # are fit on the at-risk units only, and NAs there are still tolerated
   W_cov <- weightitMSM(msm_cens_formulas, data = d, method = "glm")
   expect_identical(W$at.risk, W_cov$at.risk)
-  expect_identical(W$cens.time, W_cov$cens.time)
+  expect_identical(names(W$treat.list), names(W_cov$treat.list))
   expect_identical(stats::nobs(W$obj$A_3), sum(!cens))
   expect_null(W$missing)
 
@@ -1486,7 +1493,7 @@ test_that("weightitMSM accepts an empty censoring formula", {
                             .cens(C_3) ~ X1_2 + A_3),
                        data = d, method = "glm")
 
-  expect_equal(unname(W_mix$cens.time), c(3L, 5L))
+  expect_identical(unname(which(is_cens_treat(W_mix$treat.list))), c(3L, 5L))
   expect_true(all(W_mix$weights[cens | d$C_3 == 1L] == 0))
   expect_true(all(W_mix$weights[!cens & d$C_3 == 0L] > 0))
   expect_M_parts_okay(W_mix, tolerance = eps)
@@ -1504,11 +1511,11 @@ test_that("weightitMSM accepts an empty treatment formula", {
 
   expect_equal(unname(W$weights), unname(w1 * w2), tolerance = eps)
 
-  # Printing reports the absent covariates at every time point, not just baseline
-  expect_output(print(W), "baseline: \\(none\\)")
+  # Printing reports the absent covariates at every time point, not just the first
+  expect_output(print(W), "time 1 \\(A_1\\): \\(none\\)")
   expect_output(print(weightitMSM(list(A_1 ~ X1_0, A_2 ~ 1), data = d,
                                   method = "glm")),
-                "after time 1: \\(none\\)")
+                "time 2 \\(A_2\\): \\(none\\)")
 })
 
 test_that("weightitMSM censoring error handling", {
@@ -1607,9 +1614,9 @@ test_that("simultaneous CBPS solves the conditions with censoring present", {
   expect_null(attr(W, "Mparts", exact = TRUE))
   expect_null(attr(W, "Mparts.list", exact = TRUE))
 
-  # The censoring models are described separately, as on the product path
-  expect_named(W$cens.list, "C_2")
-  expect_length(W$treat.list, 3L)
+  # The censoring model sits among the treatments, as on the product path
+  expect_named(W$treat.list, c("A_1", "A_2", "C_2", "A_3"))
+  expect_identical(unname(which(is_cens_treat(W$treat.list))), 3L)
 })
 
 test_that("simultaneous and product CBPS solve different problems", {
@@ -1711,26 +1718,25 @@ test_that("simultaneous CBPS handles multi-category time points correctly", {
   expect_true(all(is.finite(W2$weights)))
 })
 
-test_that("bal.tab's limitations with censoring are as documented", {
+test_that("balance after censoring can be assessed by hand", {
   skip_if_not_installed("cobalt")
 
+  # These are the constructions that work whatever version of cobalt is installed.
+  # Newer cobalt assesses both of these directly; see the test below.
   d <- make_msm_cens_data()
 
-  # cobalt rejects the NA treatments that censoring necessarily produces; the
-  # documented workaround is to subset using the `at.risk` component.
   W <- weightitMSM(msm_cens_formulas, data = d, method = "glm")
-  expect_error(cobalt::bal.tab(W), "[Mm]issing")
 
+  # A time point is assessed among the units that were under observation when its
+  # model was fit, which is what the `at.risk` component records.
   ar <- W$at.risk[, "A_3"]
   expect_no_error(cobalt::bal.tab(A_3 ~ X1_2 + X2_2 + A_2, data = d[ar, ],
                                   weights = W$weights[ar], s.d.denom = "pooled"))
 
-  # For a point-treatment censoring model, every censored unit has a weight of 0,
-  # which cobalt also rejects; balance is assessed on a stacked pseudo-sample.
+  # A censoring model targets the full at-risk sample rather than another treatment
+  # group, so the weighted uncensored units are stacked against it.
   dp <- make_cens_data()
   Wp <- weightit(.cens(C) ~ X1 + X2 + X3, data = dp, method = "ebal")
-
-  expect_error(cobalt::bal.tab(Wp), "zero")
 
   covs <- dp[c("X1", "X2", "X3")]
   u <- which(Wp$treat == 0)
@@ -1742,6 +1748,47 @@ test_that("bal.tab's limitations with censoring are as documented", {
 
   # ebal drives these to 0 by construction
   expect_true(all(abs(b$Balance$Diff.Adj) < 1e-6))
+})
+
+test_that("newer cobalt assesses censoring balance directly", {
+  # cobalt gained direct support for censoring models, so the hand-built comparisons
+  # in the test above are no longer required; they are kept there because they are
+  # what works on the version currently on CRAN.
+  skip_if_not_installed("cobalt", "4.6.3.9002")
+
+  dp <- make_cens_data()
+  Wp <- weightit(.cens(C) ~ X1 + X2 + X3, data = dp, method = "ebal")
+
+  expect_no_error({
+    b <- cobalt::bal.tab(Wp)
+  })
+
+  expect_s3_class(b, "bal.tab.cens")
+
+  # The same quantity the stacked pseudo-sample produces
+  covs <- dp[c("X1", "X2", "X3")]
+  u <- which(Wp$treat == 0)
+
+  b_manual <- cobalt::bal.tab(rbind(covs[u, ], covs),
+                              treat = c(rep.int(0L, length(u)), rep.int(1L, nrow(covs))),
+                              weights = c(Wp$weights[u], rep.int(1, nrow(covs))),
+                              estimand = "ATT", s.d.denom = "treated")
+
+  expect_equal(unname(b$Balance$Diff.Adj),
+               unname(b_manual$Balance$Diff.Adj),
+               tolerance = 1e-6)
+
+  # A longitudinal treatment with censoring in it is accepted too, NAs and all.
+  # The covariates recorded after a unit drops out are missing, which cobalt says
+  # so out loud; that is the data, not a problem with the object.
+  d <- make_msm_cens_data()
+  W <- weightitMSM(msm_cens_formulas, data = d, method = "glm")
+
+  expect_warning({
+    b_msm <- cobalt::bal.tab(W)
+  }, "[Mm]issing values exist in the covariates")
+
+  expect_s3_class(b_msm, "bal.tab.msm")
 })
 
 # The zero-weight path above and the handling of degenerate outcome models (no
@@ -2026,7 +2073,7 @@ test_that("two censoring time points match a hand-written product with nested ri
 
   expect_true(all(manual[!ar3] == 0))
   expect_true(all(manual[ar3] > 0))
-  expect_equal(unname(W$cens.time), c(2L, 4L))
+  expect_identical(unname(which(is_cens_treat(W$treat.list))), c(2L, 4L))
 })
 
 test_that("stabilized longitudinal censoring weights match a hand-written product", {
@@ -2068,4 +2115,160 @@ test_that("stabilized longitudinal censoring weights match a hand-written produc
   W_un <- weightitMSM(msm_cens_formulas, data = d, method = "glm")
   expect_not_equal(unname(W$weights), unname(W_un$weights))
   expect_identical(W$weights == 0, W_un$weights == 0)
+})
+
+test_that("summary() covers the censoring models of a weightitMSM object", {
+  skip_on_cran()
+
+  d <- make_msm_cens_data()
+  cens <- d$C_2 == 1L
+
+  # `msm_cens_formulas` is A_1, A_2, .cens(C_2), A_3, so the censoring model is
+  # third of the four
+  W <- weightitMSM(msm_cens_formulas, data = d, method = "glm")
+
+  s <- summary(W)
+
+  # One entry per model, in the order they were fit, named for their variables
+  expect_length(s, 4L)
+  expect_named(s, c("A_1", "A_2", "C_2", "A_3"))
+
+  for (i in seq_along(s)) {
+    expect_s3_class(s[[i]], "summary.weightit")
+  }
+
+  # The treatment entries are still split by treatment group; the censoring entry
+  # is a single group, since only the units under observation are weighted
+  expect_named(s$A_1$coef.of.var, c("Treated", "Control"))
+  expect_named(s$C_2$coef.of.var, "All")
+
+  # The censoring entry summarizes the units still under observation. Those are
+  # the ones with a nonzero weight, so none of the weights it reports is 0 --
+  # unlike the treatment entries, which cover the censored units too.
+  expect_equal(unname(s$C_2$num.zeros), 0)
+  expect_gt(s$C_2$weight.range$All[1L], 0)
+  expect_gt(sum(s$A_1$num.zeros), 0L)
+
+  # It is the same set of weights throughout, restricted to a different sample
+  expect_equal(s$C_2$weight.range$All,
+               range(W$weights[!cens]),
+               tolerance = eps)
+
+  # `A_3` comes after the censoring model, so its own summary drops the units that
+  # had already dropped out
+  expect_equal(sum(s$A_3$effective.sample.size["Unweighted", ]),
+               sum(!cens),
+               tolerance = eps)
+
+  # Printing labels the censoring entry rather than numbering it as a time point,
+  # and the treatments keep their original numbering
+  # Each heading gives the model's position in `formula.list`, whether it is a
+  # treatment or a censoring model, and the variable it is about
+  out <- capture.output(print(s))
+  for (lab in c("1. Treatment: A_1", "2. Treatment: A_2",
+                "3. Censoring: C_2", "4. Treatment: A_3")) {
+    expect_true(any(grepl(lab, out, fixed = TRUE)), label = lab)
+  }
+})
+
+test_that("plot() can show a censoring model's weights", {
+  skip_on_cran()
+  skip_if_not_installed("ggplot2")
+
+  d <- make_msm_cens_data()
+  cens <- d$C_2 == 1L
+
+  W <- weightitMSM(msm_cens_formulas, data = d, method = "glm")
+  s <- summary(W)
+
+  n_plotted <- function(p) sum(ggplot2::ggplot_build(p)$data[[1L]]$count)
+
+  # By position or by name
+  p <- plot(s, time = 3L)
+  expect_s3_class(p, "ggplot")
+  expect_identical(p$labels$subtitle, "3. Censoring: C_2")
+  expect_identical(plot(s, time = "C_2")$labels$subtitle, p$labels$subtitle)
+
+  # Only the units still under observation, which is what summary() reports too
+  expect_equal(n_plotted(p), sum(!cens))
+
+  # A treatment measured after the censoring model likewise leaves out the units
+  # that had dropped out, rather than giving them a facet of their own
+  expect_equal(n_plotted(plot(s, time = "A_3")), sum(!cens))
+
+  # An unknown name says what the options are
+  expect_error(plot(s, time = "nope"), "A_1")
+})
+
+test_that("summary(which.time =) restricts which models are summarized", {
+  skip_on_cran()
+
+  d <- make_msm_cens_data()
+
+  # A_1, A_2, .cens(C_2), A_3
+  W <- weightitMSM(msm_cens_formulas, data = d, method = "glm")
+
+  nm <- function(...) names(summary(W, ...))
+
+  # Omitting it summarizes everything; `NULL` does the same
+  expect_identical(nm(), c("A_1", "A_2", "C_2", "A_3"))
+  expect_identical(nm(which.time = NULL), c("A_1", "A_2", "C_2", "A_3"))
+
+  # `.all` and `.none` are cobalt's and are deliberately not accepted here: there
+  # is no use for an empty summary, and omitting the argument already asks for all
+  expect_error(summary(W, which.time = .all))
+  expect_error(summary(W, which.time = .none))
+
+  # Positions and names, including the censoring model
+  expect_identical(nm(which.time = 3), "C_2")
+  expect_identical(nm(which.time = c(1, 4)), c("A_1", "A_3"))
+  expect_identical(nm(which.time = "C_2"), "C_2")
+  expect_identical(nm(which.time = c("A_1", "A_3")), c("A_1", "A_3"))
+
+  # Selection does not renumber the treatments: A_3 is the third treatment
+  # whether or not the others were asked for
+  out <- capture.output(print(summary(W, which.time = "A_3")))
+  expect_true(any(grepl("4. Treatment: A_3", out, fixed = TRUE)))
+  expect_false(any(grepl("1. Treatment: A_1", out, fixed = TRUE)))
+
+  # A single selected model is still labelled, since which one it is cannot
+  # otherwise be told
+  expect_true(any(grepl("3. Censoring: C_2",
+                        capture.output(print(summary(W, which.time = "C_2"))),
+                        fixed = TRUE)))
+
+  # Unusable values are an error here rather than the warning `bal.tab()` gives,
+  # since this decides what is computed rather than what is displayed
+  expect_error(summary(W, which.time = 99), "[Nn]o numbers in")
+  expect_error(summary(W, which.time = "nope"), "[Nn]o names in")
+  expect_error(summary(W, which.time = TRUE), "must be")
+  expect_error(summary(W, which.time = NA), "must be")
+
+  # The summaries themselves are the same ones the full call produces
+  expect_equal(summary(W, which.time = "C_2")$C_2, summary(W)$C_2)
+})
+
+test_that("plot() accepts `which.time` and still accepts `time`", {
+  skip_on_cran()
+  skip_if_not_installed("ggplot2")
+
+  d <- make_msm_cens_data()
+  W <- weightitMSM(msm_cens_formulas, data = d, method = "glm")
+  s <- summary(W)
+
+  target <- plot(s, which.time = 3L)$labels$subtitle
+  expect_identical(target, "3. Censoring: C_2")
+
+  # By name, and by the former argument name, which works without complaint
+  expect_identical(plot(s, which.time = "C_2")$labels$subtitle, target)
+  expect_no_warning({
+    p_time <- plot(s, time = 3L)
+  })
+  expect_identical(p_time$labels$subtitle, target)
+  expect_identical(plot(s, time = "C_2")$labels$subtitle, target)
+
+  # Positionally, `which.time` sits where `time` did
+  expect_identical(plot(s, NULL, NULL, 3L)$labels$subtitle, target)
+
+  expect_error(plot(s, which.time = "nope"), "A_1")
 })

@@ -2,6 +2,7 @@
 % Please edit documentation in R/weightit2cfd.R
 \name{method_cfd}
 \alias{method_cfd}
+\alias{method_kernel}
 \title{Characteristic Function Distance Balancing}
 \description{
 This page explains the details of estimating weights using
@@ -39,7 +40,8 @@ For censoring weights, requested by wrapping the censoring indicator in \code{\l
 
 For longitudinal treatments, the weights are the product of the weights
 estimated at each time point. This method is not guaranteed to yield optimal
-balance at each time point. \strong{NOTE: the use of CFD balancing with longitudinal treatments has not been validated!}
+balance at each time point. \strong{NOTE: the use of CFD balancing with longitudinal treatments has not been validated!} Because of this, \code{\link[=weightitMSM]{weightitMSM()}} errors when this method is
+requested; set \code{weightit.force = TRUE} to bypass that error.
 }
 
 \subsection{Sampling Weights}{
@@ -86,12 +88,13 @@ supplied to penalize highly variable weights to increase the effective sample
 size at the expense of balance.
 \subsection{Reproducibility}{
 
-Although there are no stochastic components to the optimization, a feature
-turned off by default is to update the optimization based on how long the
-optimization has been running, which will vary across runs even when a seed
-is set and no parameters have been changed. See the discussion
+Although there are no stochastic components to the optimization, \pkg{osqp}
+by default updates the optimization based on how long the optimization has
+been running, which will vary across runs even when a seed is set and no
+parameters have been changed. See the discussion
 \href{https://github.com/osqp/osqp-r/issues/19}{here} for more details. To ensure
-reproducibility by default, \code{adaptive_rho_interval} is set to 10. See
+reproducibility by default, \code{adaptive_rho_interval} is set to 50, which fixes
+the update schedule at a set number of iterations. See
 \pkgfun{osqp}{osqpSettings} for details.
 }
 }
@@ -118,7 +121,7 @@ As of version 1.5.0, \code{polish} is now set to \code{TRUE} by default. This sh
 \section{Additional Arguments}{
 
 
-The following following additional arguments can be specified:
+The following additional arguments can be specified:
 
 \describe{
 \item{\code{kernel}}{the name of the kernel used to characterize the CFD. Allowable options include \code{"gaussian"} for the multivariate Gaussian kernel (the default), \code{"matern"} for the multivariate Matern kernel, \code{"energy"} for the energy distance kernel, \code{"laplace"} for the univariate Laplacian kernel, and \code{"t"} for the univariate t-distribution kernel.}
@@ -127,14 +130,15 @@ The following following additional arguments can be specified:
 \item{\code{lambda}}{a positive numeric scalar used to penalize the square of the weights. This value divided by the square of the total sample size is added to the diagonal of the quadratic part of the loss function. Higher values favor weights with less variability. Default is .0001, which is essentially 0.}
 \item{\code{moments}}{\code{integer}; the highest power of each covariate to be balanced. For example, if \code{moments = 3}, each covariate, its square, and its cube will be balanced. Can also be a named vector with a value for each covariate (e.g., \code{moments = c(x1 = 2, x2 = 4)}). Values greater than 1 for categorical covariates are ignored. Default is 0 to impose no constraint on balance.}
 \item{\code{int}}{\code{logical}; whether first-order interactions of the covariates are to be balanced. Default is \code{FALSE}.}
-\item{\code{tols}}{when \code{moments} is positive, a number corresponding to the maximum allowed standardized mean difference (for binary and multi-category treatments) or treatment-covariate correlation (for continuous treatments) allowed. Default is 0. Ignored when \code{moments = 0}.}
+\item{\code{tols}}{when \code{moments} is positive, a number corresponding to the maximum allowed standardized mean difference allowed. Default is 0. Ignored when \code{moments = 0}.}
 \item{\code{min.w}}{the minimum allowable weight. Negative values (including \code{-Inf}) are allowed. Default is \code{1e-8}.}
+\item{\code{bw_scale}}{a positive numeric scalar multiplying the kernel bandwidth, which is set by default to the median of the pairwise distances between units. Values below 1 make the kernel more local and values above 1 make it more diffuse. Default is 1. Ignored when \code{kernel = "energy"}, which has no bandwidth.}
 }
 
 For binary and multi-category treatments, the following additional arguments can be specified:
 \describe{
 \item{\code{improved}}{\code{logical}; whether to include an additional term in the CFD objective function to minimize the distance between pairs of groups when \code{estimand = "ATE"}. Default is \code{TRUE}.}
-\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \verb{quantile = list(x1 = c(.25, .5. , .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates.
+\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \code{quantile = list(x1 = c(.25, .5, .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates.
 }
 }
 

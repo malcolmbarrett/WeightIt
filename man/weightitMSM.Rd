@@ -59,7 +59,7 @@ weighting is to be done within categories or a one-sided formula with the
 stratifying variable on the right-hand side. For example, if \code{by = "gender"} or \code{by = ~gender},
 a separate propensity score model or
 optimization will occur within each level of the variable \code{"gender"}. Only
-one \code{by} variable is allowed; to stratify by multiply variables
+one \code{by} variable is allowed; to stratify by multiple variables
 simultaneously, create a new variable that is a full cross of those
 variables using \code{\link[=interaction]{interaction()}}.}
 
@@ -114,29 +114,18 @@ attempted. Set to \code{TRUE} to bypass this error message.}
 \value{
 A \code{weightitMSM} object with the following elements:
 \item{weights}{The estimated weights, one for each unit.}
-\item{treat.list}{A list of the values of the time-varying treatment variables.}
-\item{covs.list}{A list of the covariates used in the fitting at each time point. Only includes the raw covariates, which may have been altered in the fitting process.}
+\item{treat.list}{A list of the values of the time-varying treatment variables, one entry per entry of \code{formula.list} and named for the variable modeled there. When censoring is modeled, the censoring indicators are included in place among the treatments, in the order they were fit; an entry's \code{"treat.type"} attribute is \code{"censoring"} when it is a censoring indicator, which is 0 for units still under observation, 1 for units censored at that time point, and \code{NA} for units censored earlier.}
+\item{covs.list}{A list of the covariates used in the fitting at each time point, aligned with \code{treat.list}. Only includes the raw covariates, which may have been altered in the fitting process.}
 \item{estimand}{"ATE", currently the only estimand for MSMs with binary or multi-category treatments.}
 \item{method}{The weight estimation method specified.}
 \item{s.weights}{The provided sampling weights.}
-\item{by}{A data.frame containing the \code{by} variable when specified.}
+\item{by}{A data frame containing the \code{by} variable when specified.}
 \item{stabilization}{The stabilization factors, if any.}
 
 When censoring is modeled (i.e., when any entry of \code{formula.list} has its left
-side wrapped in \code{\link[=.cens]{.cens()}}), \code{treat.list} and \code{covs.list} describe the \emph{treatment}
-models only, while \code{formula.list} is kept exactly as supplied, markers included,
-so that \code{\link[=update]{update()}} round-trips. The following additional components describe the
-censoring models:
-\item{cens.list}{A list of the values of the censoring indicators, one entry per
-censoring time point. Each is 0 for units still under observation and 1 for units
-censored at that time point, and \code{NA} for units censored earlier.}
-\item{cens.covs.list}{A list of the covariates used to fit each censoring model.
-As with \code{covs.list}, only the raw covariates are included.}
-\item{cens.formula.list}{A list of the censoring model formulas, with the
-\code{\link[=.cens]{.cens()}} marker retained on the left side.}
-\item{cens.time}{The positions of the censoring models within \code{formula.list}, so
-that \code{formula.list[cens.time]} recovers them and their timing relative to the
-treatment models can be determined.}
+side wrapped in \code{\link[=.cens]{.cens()}}), \code{formula.list} is kept exactly as supplied, markers
+included, so that \code{\link[=update]{update()}} round-trips, and one additional component is
+returned:
 \item{at.risk}{A logical matrix with one row per unit and one column per entry of
 \code{formula.list}, named for the treatment or censoring variable modeled at that
 entry. Each column records which units were still under observation when that
@@ -178,7 +167,7 @@ and the time-varying covariates that took on values after the first treatment
 and before the second. Currently only "wide" data sets are supported, where each
 unit is represented by exactly one row that contains its covariate and
 treatment history encoded in separate variables. You can use \code{\link[=reshape]{reshape()}} or
-other functions to transform your data into this format; see example below.
+other functions to transform a long data set into this format.
 \subsection{Censoring weights (IPCW)}{
 
 Censoring can be modeled by including entries in \code{formula.list} whose left side

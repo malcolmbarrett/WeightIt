@@ -88,7 +88,7 @@
 #' helpful in diagnosing the problem. `weightit.fit()` does check to make sure
 #' weights were actually estimated, though.
 #'
-#' `weightit.fit()` may be most useful in speeding up simulation simulation
+#' `weightit.fit()` may be most useful in speeding up simulation
 #' studies that use `weightit()` because the covariates can be supplied as a
 #' numeric matrix, which is often how they are generated in simulations, without
 #' having to go through the potentially slow process of extracting the
@@ -357,7 +357,9 @@ weightit.fit <- function(covs, treat, method = "glm", s.weights = NULL, by.facto
     #than deleting it, so the all(lengths > 0L) guard below stays correct.
     Mparts.list[i] <- list(.expand_Mparts_by(obj$Mparts, sub, treat))
 
-    info[[i]] <- obj$info
+    #Single-bracket for the same reason as above: most methods return no `info`, and
+    #`[[<-` with NULL would drop the entry rather than leave it empty.
+    info[i] <- list(obj$info)
   }
 
   if (include.obj) {

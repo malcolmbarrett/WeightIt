@@ -544,3 +544,19 @@ test_that("Continuous treatment", {
     expect_true(all(is.finite(W_surr$weights) & W_surr$weights > 0))
   })
 })
+
+test_that("ATOS is not an allowed estimand for GBM", {
+  skip_on_cran()
+  skip_if_not_installed("gbm")
+
+  test_data <- readRDS(test_path("fixtures", "test_data.rds"))
+
+  # ATOS requires searching for the optimal cutoff for every candidate set of
+  # weights, which is too slow to be worth offering here
+  expect_false("ATOS" %in% .weightit_methods$gbm$estimand)
+
+  expect_error(weightit(A ~ X1 + X2, data = test_data, method = "gbm",
+                        estimand = "ATOS", n.trees = 50L,
+                        criterion = "smd.mean"),
+               "ATOS")
+})

@@ -51,7 +51,7 @@ contains all the information in \code{obj} with the weights, propensity scores,
 call, and possibly covariates updated from \code{sbps()}. In addition, the
 \code{prop.subgroup} component contains the values of the coefficients \eqn{C} for the
 subgroups (which are either 0 or 1 for the standard SBPS), and the
-\code{moderator} component contains a data.frame with the moderator.
+\code{moderator} component contains a data frame with the moderator.
 
 This object has its own summary method and is compatible with \pkg{cobalt}
 functions. The \code{cluster} argument should be used with \pkg{cobalt} functions

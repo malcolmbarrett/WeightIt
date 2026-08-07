@@ -245,7 +245,7 @@ coxph_weightit <- function(formula, data, weightit = NULL,
 
   n <- nrow(mf)
   if (n == 0) {
-    arg::err("No (non-missing) observations")
+    arg::err("no (non-missing) observations")
   }
 
   # Process Y

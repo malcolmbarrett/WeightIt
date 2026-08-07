@@ -135,7 +135,7 @@ crashes, and invalid weights, and error and warning messages may not be
 helpful in diagnosing the problem. \code{weightit.fit()} does check to make sure
 weights were actually estimated, though.
 
-\code{weightit.fit()} may be most useful in speeding up simulation simulation
+\code{weightit.fit()} may be most useful in speeding up simulation
 studies that use \code{weightit()} because the covariates can be supplied as a
 numeric matrix, which is often how they are generated in simulations, without
 having to go through the potentially slow process of extracting the

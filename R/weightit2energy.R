@@ -44,7 +44,8 @@
 #'
 #' For longitudinal treatments, the weights are the product of the weights
 #' estimated at each time point. This method is not guaranteed to yield optimal
-#' balance at each time point. **NOTE: the use of energy balancing with longitudinal treatments has not been validated!**
+#' balance at each time point. **NOTE: the use of energy balancing with longitudinal treatments has not been validated!** Because of this, [weightitMSM()] errors when this method is
+#' requested; set `weightit.force = TRUE` to bypass that error.
 #'
 #' ## Sampling Weights
 #'
@@ -68,7 +69,7 @@
 #'
 #' @section Additional Arguments:
 #'
-#' The following following additional arguments can be specified:
+#' The following additional arguments can be specified:
 #'
 #' \describe{
 #'   \item{`dist.mat`}{the name of the method used to compute the distance matrix of the covariates or the numeric distance matrix itself. Allowable options include `"scaled_euclidean"` for the Euclidean (L2) distance on the scaled covariates (the default), `"mahalanobis"` for the Mahalanobis distance, and `"euclidean"` for the raw Euclidean distance. Abbreviations allowed. Note that some user-supplied distance matrices can cause the R session to abort due to a bug within \pkg{osqp}, so this argument should be used with caution. A distance matrix must be a square, symmetric, numeric matrix with zeros along the diagonal and a row and column for each unit. Can also be supplied as the output of a call to [dist()].}
@@ -82,7 +83,7 @@
 #' For binary and multi-category treatments, the following additional arguments can be specified:
 #'   \describe{
 #'     \item{`improved`}{`logical`; whether to use the improved energy balancing weights as described by Huling and Mak (2024) when `estimand = "ATE"`. This involves optimizing balance not only between each treatment group and the overall sample, but also between each pair of treatment groups. Huling and Mak (2024) found that the improved energy balancing weights generally outperformed standard energy balancing. Default is `TRUE`; set to `FALSE` to use the standard energy balancing weights instead (not recommended).}
-#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5. , .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates.
+#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5, .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates.
 #'     }
 #'   }
 #'
@@ -94,6 +95,9 @@
 #'     }
 #'     \item{`dimension.adj`}{
 #'       `logical`; whether to include the dimensionality adjustment described by Huling et al. (2023). If `TRUE`, the default, the energy distance for the covariates is weighted \eqn{\sqrt{p}} times as much as the energy distance for the treatment, where \eqn{p} is the number of covariates. If `FALSE`, the two energy distances are given equal weights. Default is `TRUE`.
+#'     }
+#'     \item{`treat.dist.mat`}{
+#'       the numeric distance matrix of the treatment, playing the same role for the treatment that `dist.mat` plays for the covariates. If unspecified, the Euclidean distance on the treatment scaled by its weighted standard deviation is used. Must be a square, symmetric, numeric matrix with zeros along the diagonal and a row and column for each unit; can also be supplied as the output of a call to [dist()]. As with `dist.mat`, some user-supplied matrices can cause the R session to abort due to a bug within \pkg{osqp}, so this argument should be used with caution.
 #'     }
 #'   }
 #'
@@ -150,26 +154,27 @@
 #'
 #' ## Reproducibility
 #'
-#' Although there are no stochastic components to the optimization, a feature
-#' turned off by default is to update the optimization based on how long the
-#' optimization has been running, which will vary across runs even when a seed
-#' is set and no parameters have been changed. See the discussion
+#' Although there are no stochastic components to the optimization, \pkg{osqp}
+#' by default updates the optimization based on how long the optimization has
+#' been running, which will vary across runs even when a seed is set and no
+#' parameters have been changed. See the discussion
 #' [here](https://github.com/osqp/osqp-r/issues/19) for more details. To ensure
-#' reproducibility by default, `adaptive_rho_interval` is set to 10. See
+#' reproducibility by default, `adaptive_rho_interval` is set to 50, which fixes
+#' the update schedule at a set number of iterations. See
 #' \pkgfun{osqp}{osqpSettings} for details.
 #'
 #' @note
 #' Sometimes the optimization can fail to converge because the problem is
-#' not convex. A warning will be displayed if so. In these cases, try simply
-#' re-fitting the weights without changing anything (but see the
-#' *Reproducibility* section above). If the method repeatedly fails, you should
-#' try another method or change the supplied parameters (though this is
-#' uncommon). Increasing `max_iter` or changing `adaptive_rho_interval` might
-#' help.
+#' not convex. A warning will be displayed if so. Because the optimization is
+#' deterministic (see the *Reproducibility* section above), re-fitting without
+#' changing anything will reproduce the failure; increasing `max_iter` or changing
+#' `adaptive_rho_interval` may help instead. If the method repeatedly fails, you
+#' should try another method or change the supplied parameters (though this is
+#' uncommon).
 #'
 #' If it seems like the weights are balancing the covariates but you still get a
-#' failure to converge, this usually indicates that more iterations are needs to
-#' find the optimal solutions. This can occur when `moments` or `int` are
+#' failure to converge, this usually indicates that more iterations are needed to
+#' find the optimal solution. This can occur when `moments` or `int` are
 #' specified. `max_iter` should be increased, and setting `verbose = TRUE`
 #' allows you to monitor the process and examine if the optimization is
 #' approaching convergence.

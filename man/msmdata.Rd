@@ -14,7 +14,7 @@ A data frame with 7500 observations on the following 10 variables.
 \item{\code{X2_1}}{a binary covariate measured at the first time point (after the first treatment)}
 \item{\code{A_2}}{a binary indicator of treatment status at the second time point}
 \item{\code{X1_2}}{a count covariate measured at the second time point (after the second treatment)}
-\item{\code{X2_2}}{a binary covariate measured at the first time point (after the first treatment)}
+\item{\code{X2_2}}{a binary covariate measured at the second time point (after the second treatment)}
 \item{\code{A_3}}{a binary indicator of treatment status at the third time point}
 \item{\code{Y_B}}{a binary indicator of the outcome event (e.g., death)}
 }
@@ -30,7 +30,7 @@ delivered at each time point on an adverse event.
 
 The data were generated using a simple simulation mechanism.
 For further details on how the dataset was built, see the code
-at \href{https://github.com/ngreifer/Weightit/blob/master/data-raw/msmdata.R}{data-raw/msmdata.R}.
+at \href{https://github.com/ngreifer/WeightIt/blob/master/data-raw/msmdata.R}{data-raw/msmdata.R}.
 
 The dataset is provided to illustrate the features of
 \code{weightitMSM()} and is not based on a realistic data-generating

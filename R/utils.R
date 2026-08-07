@@ -184,36 +184,6 @@ round_df_char <- function(df, digits, pad = " ", na_vals = "") {
 
   df
 }
-text_box_plot <- function(range.list, width = 12L) {
-  full.range <- range(unlist(range.list))
-  if (all_the_same(full.range)) {
-    for (i in seq_along(range.list)) {
-      range.list[[i]][1L] <- range.list[[i]][1L] - 1e-6
-      range.list[[i]][2L] <- range.list[[i]][2L] + 1e-6
-    }
-    full.range <- range(unlist(range.list))
-  }
-  ratio <- diff(full.range) / (width + 1)
-  rescaled.range.list <- lapply(range.list, function(x) round(x / ratio))
-  rescaled.full.range <- round(full.range / ratio)
-  d <- make_df(c("Min", space(width + 1L), "Max"),
-               names(range.list),
-               "character")
-  d[["Min"]] <- vapply(range.list, function(x) x[1L], numeric(1L))
-  d[["Max"]] <- vapply(range.list, function(x) x[2L], numeric(1L))
-  for (i in seq_row(d)) {
-    spaces1 <- rescaled.range.list[[i]][1L] - rescaled.full.range[1L]
-    dashes <- max(c(0L, diff(rescaled.range.list[[i]]) - 2L))
-    spaces2 <- max(c(0L, diff(rescaled.full.range) - (spaces1 + 1L + dashes + 1L)))
-
-    d[i, 2L] <- sprintf("%s|%s|%s",
-                        space(spaces1),
-                        strrep("-", dashes),
-                        space(spaces2))
-  }
-
-  d
-}
 equivalent.factors <- function(f1, f2) {
   nu1 <- nunique(f1)
   nu2 <- nunique(f2)
@@ -819,7 +789,7 @@ get_covs_and_treat_from_formula2 <- function(f, data = NULL, sep = "", ...) {
     data.specified <- TRUE
   }
   else {
-    arg::wrn("the argument supplied to {.arg data} is not a data frame object. This may causes errors or unexpected results")
+    arg::wrn("the argument supplied to {.arg data} is not a data frame object. This may cause errors or unexpected results")
     data <- env
     data.specified <- FALSE
   }
@@ -1147,6 +1117,15 @@ get_treat_type <- function(treat) {
 }
 has_treat_type <- function(treat) {
   is_not_null(get_treat_type(treat))
+}
+#Which entries of a list of treatments are censoring indicators. Censoring is a
+#treatment type rather than a separate kind of thing, so a list of longitudinal
+#treatments holds the censoring indicators in place among them and this is how they
+#are told apart.
+is_cens_treat <- function(treat.list) {
+  vapply(treat.list, function(t) {
+    identical(get_treat_type(t), "censoring")
+  }, logical(1L))
 }
 
 #Uniqueness
@@ -1492,11 +1471,17 @@ Invert <- function(f) {
 
   for (i in seq_len(n)) {
     mat <- mat.list[[i]]
-    row_end <- row_start + nrow(mat) - 1L
-    col_end <- col_start + ncol(mat) - 1L
-    out[row_start:row_end, col_start:col_end] <- mat
-    row_start <- row_end + 1L
-    col_start <- col_end + 1L
+
+    #`seq_len()` rather than `start:end`: a block with no rows or no columns would
+    #make `end` one less than `start`, and the colon would count backwards into the
+    #preceding block.
+    rows <- row_start + seq_len(nrow(mat)) - 1L
+    cols <- col_start + seq_len(ncol(mat)) - 1L
+
+    out[rows, cols] <- mat
+
+    row_start <- row_start + nrow(mat)
+    col_start <- col_start + ncol(mat)
   }
 
   rownames(out) <- unlist(lapply(mat.list, rownames))
@@ -1509,8 +1494,10 @@ Invert <- function(f) {
   end <- cumsum(n)
   start <- c(1L, end[-length(n)] + 1L)
 
+  #`seq_len()` rather than `start:end` so that a zero-length entry yields a
+  #zero-length element instead of counting backwards and returning two.
   lapply(seq_along(n), function(i) {
-    vec[start[i]:end[i]]
+    vec[start[i] + seq_len(n[i]) - 1L]
   })
 }
 
@@ -1543,7 +1530,8 @@ all_apply <- function(X, FUN, ...) {
   TRUE
 }
 
-#crayon utilities
+#cli utilities
+.bd <- function(...) cli::style_bold(...)
 .it <- function(...) cli::style_italic(...)
 .ul <- function(...) cli::style_underline(...)
 .st <- function(...) cli::style_strikethrough(...)

@@ -1,6 +1,6 @@
 #Treatment class
 #' @exportS3Method `[` treat
-`[.treat` <- function(x, ..., value) {
+`[.treat` <- function(x, ...) {
   y <- NextMethod("[")
   attr(y, "treat.type") <- .attr(x, "treat.type")
   attr(y, "treat.name") <- .attr(x, "treat.name")

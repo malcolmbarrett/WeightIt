@@ -43,7 +43,7 @@ An object of class \code{"anova"} inheriting from class \code{"data.frame"}.
 }
 \description{
 \code{anova()} is used to compare nested models fit with
-\code{glm_weightit()}, \code{mutinom_weightit()}, \code{ordinal_weightit()}, or
+\code{glm_weightit()}, \code{multinom_weightit()}, \code{ordinal_weightit()}, or
 \code{coxph_weightit()} using a Wald test that incorporates uncertainty in
 estimating the weights (if any).
 }

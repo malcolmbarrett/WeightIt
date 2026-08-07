@@ -24,7 +24,7 @@ The following estimands are allowed: ATE, ATT, ATC, and ATO.
 
 For multi-category treatments, this method estimates the generalized
 propensity scores and weights using \code{optim()} using formulas described by
-Imai and Ratkovic (2014). The following estimands are allowed: ATE and ATT.
+Imai and Ratkovic (2014). The following estimands are allowed: ATE, ATT, and ATO.
 }
 
 \subsection{Continuous Treatments}{
@@ -48,7 +48,7 @@ to those described by Huffman and van Gameren (2018). This involves
 specifying moment conditions for the models at each time point as with
 single-time point treatments but using the product of the time-specific
 weights as the weights that are used in the balance moment conditions. This
-yields weights that balance the covariate at each time point. This is not the
+yields weights that balance the covariates at each time point. This is not the
 same implementation as is implemented in \code{CBPS::CBMSM()}, and results should
 not be expected to align between the two methods. Any combination of
 treatment types is supported.
@@ -169,7 +169,7 @@ The following additional arguments can be specified:
 }
 \item{\code{reltol}}{the relative tolerance for convergence of the optimization. Passed to the \code{control} argument of \code{optim()}. Default is \code{1e-10}.
 }
-\item{\code{maxit}}{the maximum number of iterations for convergence of the optimization. Passed to the \code{control} argument of \code{optim()}. Default is 1000 for binary and multi-category treatments and 10000 for continuous and longitudinal treatments.
+\item{\code{maxit}}{the maximum number of iterations for convergence of the optimization. Passed to the \code{control} argument of \code{optim()}. Default is 5000 for binary treatments and censoring, 1000 for multi-category treatments, and 10000 for continuous and longitudinal treatments.
 }
 \item{\code{solver}}{the solver to use to estimate the parameters of the just-identified CBPS. Allowable options include \code{"multiroot"} to use \pkgfun{rootSolve}{multiroot} and \code{"optim"} to use \code{\link[stats:optim]{stats::optim()}}. \code{"multiroot"} is the default when \pkg{rootSolve} is installed, as it tends to be much faster and more accurate; otherwise, \code{"optim"} is the default and requires no dependencies. Regardless of \code{solver}, the output of \code{optim()} is returned when \code{include.obj = TRUE} (see below). When \code{over = TRUE}, the parameter estimates of the just-identified CBPS are used as starting values for the over-identified CBPS.
 }
@@ -177,7 +177,7 @@ The following additional arguments can be specified:
 }
 \item{\code{int}}{\code{logical}; whether first-order interactions of the covariates are to be balanced. Default is \code{FALSE}.
 }
-\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \verb{quantile = list(x1 = c(.25, .5. , .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
+\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \code{quantile = list(x1 = c(.25, .5, .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
 }
 
 }

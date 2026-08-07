@@ -35,7 +35,8 @@
 #' ## Longitudinal Treatments
 #'
 #' For longitudinal treatments, the weights are the product of the weights
-#' estimated at each time point. **NOTE: the use of npCBPS with longitudinal treatments has not been validated!**
+#' estimated at each time point. **NOTE: the use of npCBPS with longitudinal treatments has not been validated!** Because of this, [weightitMSM()] errors when this method is
+#' requested; set `weightit.force = TRUE` to bypass that error.
 #'
 #' ## Sampling Weights
 #'
@@ -61,7 +62,7 @@
 #'     }
 #'     \item{`int`}{`logical`; whether first-order interactions of the covariates are to be balanced. Default is `FALSE`.
 #'     }
-#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5. , .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
+#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5, .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
 #'     }
 #' }
 #'

@@ -23,7 +23,7 @@
 #'
 #' For multi-category treatments, this method estimates the generalized
 #' propensity scores and weights using `optim()` using formulas described by
-#' Imai and Ratkovic (2014). The following estimands are allowed: ATE and ATT.
+#' Imai and Ratkovic (2014). The following estimands are allowed: ATE, ATT, and ATO.
 #'
 #' ## Continuous Treatments
 #'
@@ -44,7 +44,7 @@
 #' specifying moment conditions for the models at each time point as with
 #' single-time point treatments but using the product of the time-specific
 #' weights as the weights that are used in the balance moment conditions. This
-#' yields weights that balance the covariate at each time point. This is not the
+#' yields weights that balance the covariates at each time point. This is not the
 #' same implementation as is implemented in `CBPS::CBMSM()`, and results should
 #' not be expected to align between the two methods. Any combination of
 #' treatment types is supported.
@@ -88,7 +88,7 @@
 #'     }
 #'     \item{`reltol`}{the relative tolerance for convergence of the optimization. Passed to the `control` argument of `optim()`. Default is `1e-10`.
 #'     }
-#'     \item{`maxit`}{the maximum number of iterations for convergence of the optimization. Passed to the `control` argument of `optim()`. Default is 1000 for binary and multi-category treatments and 10000 for continuous and longitudinal treatments.
+#'     \item{`maxit`}{the maximum number of iterations for convergence of the optimization. Passed to the `control` argument of `optim()`. Default is 5000 for binary treatments and censoring, 1000 for multi-category treatments, and 10000 for continuous and longitudinal treatments.
 #'     }
 #'     \item{`solver`}{the solver to use to estimate the parameters of the just-identified CBPS. Allowable options include `"multiroot"` to use \pkgfun{rootSolve}{multiroot} and `"optim"` to use [stats::optim()]. `"multiroot"` is the default when \pkg{rootSolve} is installed, as it tends to be much faster and more accurate; otherwise, `"optim"` is the default and requires no dependencies. Regardless of `solver`, the output of `optim()` is returned when `include.obj = TRUE` (see below). When `over = TRUE`, the parameter estimates of the just-identified CBPS are used as starting values for the over-identified CBPS.
 #'     }
@@ -96,7 +96,7 @@
 #'     }
 #'     \item{`int`}{`logical`; whether first-order interactions of the covariates are to be balanced. Default is `FALSE`.
 #'     }
-#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5. , .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
+#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5, .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
 #'     }
 #'
 #' }

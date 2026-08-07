@@ -140,9 +140,15 @@ test_that("print() and summary() work on an sbps object", {
   s <- summary(S)
   expect_s3_class(s, "summary.weightit.sbps")
 
-  # One summary per subgroup
-  expect_output(print(s), "g0")
-  expect_output(print(s), "g1")
+  # One summary per subgroup, each under a ruled heading naming it. `cli::symbol$line`
+  # rather than the character itself, since cli falls back to ASCII where Unicode is
+  # unusable.
+  out <- cli::ansi_strip(capture.output(print(s)))
+  rule <- strrep(cli::symbol$line, 3L)
+
+  expect_identical(sum(startsWith(out, rule)), 2L)
+  expect_match(out, 'Subgroup: G = "g0"', fixed = TRUE, all = FALSE)
+  expect_match(out, 'Subgroup: G = "g1"', fixed = TRUE, all = FALSE)
 })
 
 test_that("sbps() rejects what it cannot handle", {

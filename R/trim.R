@@ -10,9 +10,10 @@
 #'
 #' @param x a `weightit` object or a vector of weights.
 #' @param at `numeric`; either the quantile of the weights above which weights
-#'   are to be trimmed. A single number between .5 and 1, or the number of
-#'   weights to be trimmed (e.g., `at = 3` for the top 3 weights to be set to
-#'   the 4th largest weight).
+#'   are to be trimmed, given as a single number between .5 and 1 (a value below
+#'   .5 is replaced by its complement), or the number of weights to be trimmed,
+#'   given as a number of 1 or greater (e.g., `at = 3` for the top 3 weights to
+#'   be set to the 4th largest weight).
 #' @param lower `logical`; whether also to trim at the lower quantile (e.g., for
 #'   `at = .9`, trimming at both .1 and .9, or for `at = 3`, trimming the top
 #'   and bottom 3 weights). Default is `FALSE` to only trim the higher weights.
@@ -40,14 +41,14 @@
 #' are set to the weight at that quantile unless `drop = TRUE`, in which case
 #' they are set to 0. If `lower = TRUE`, all weights below 1 minus the quantile
 #' are trimmed. In general, trimming weights can increase imbalance but also
-#' decreases the variability of the weights, improving precision at the
+#' decrease the variability of the weights, improving precision at the
 #' potential expense of unbiasedness (Cole & Hernán, 2008). See Lee, Lessler,
-#' and Stuart (2011) and Thoemmes and Ong (2015) for discussions and simulation
+#' and Stuart (2011) and Thoemmes and Ong (2016) for discussions and simulation
 #' results of trimming weights at various quantiles. Note that trimming weights
 #' can also change the target population and therefore the estimand.
 #'
 #' When using `trim()` on a numeric vector of weights, it is helpful to include
-#' the treatment vector as well. The helps determine the type of treatment and
+#' the treatment vector as well. This helps determine the type of treatment and
 #' estimand, which are used to specify how trimming is performed. In particular,
 #' if the estimand is determined to be the ATT or ATC, the weights of the target
 #' (i.e., focal) group are ignored, since they should all be equal to 1.
@@ -136,6 +137,13 @@ trim.weightit <- function(x, at = 0, lower = FALSE, drop = FALSE, ...) {
   attr(x, "trim") <- list(at = at,
                           lower = lower,
                           drop = drop)
+
+  #The M-estimation parts must always reproduce `x$weights`; trimming is not a
+  #smooth function of the weights and so has no M-estimation form. Dropping them
+  #makes `vcov()` fall back to a method that does account for it: the bootstrap
+  #re-applies the trim in each replicate using the attribute set above.
+  attr(x, "Mparts") <- NULL
+  attr(x, "Mparts.list") <- NULL
 
   x
 }

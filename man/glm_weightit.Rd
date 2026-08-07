@@ -169,7 +169,7 @@ also performs the resampling-based bootstrap but
 with the additional features \pkg{fwb} provides (e.g., a progress bar and
 parallelization).
 
-Functions in the \pkg{sandwich} package can be to compute standard errors
+Functions in the \pkg{sandwich} package can be used to compute standard errors
 after fitting, regardless of how \code{vcov} was specified, though these will
 ignore estimation of the weights, if any. When no adjustment is done for
 estimation of the weights (i.e., because no \code{weightit} argument was supplied

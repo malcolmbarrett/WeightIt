@@ -10,7 +10,7 @@
 #'   `weightit.fit` object from [weightit.fit()].
 #' @param treat a vector of treatment statuses, one for each unit. Required when
 #'   `x` is a vector of weights.
-#' @param covs an optional `data.frame` of covariates. For using \pkg{WeightIt}
+#' @param covs an optional data frame of covariates. For using \pkg{WeightIt}
 #'   functions, this is not necessary, but for use with \pkg{cobalt} it is. Note
 #'   that when using with a `weightit.fit` object, this should not be the matrix
 #'   supplied to the `covs` argument of `weightit.fit()` unless there are no
@@ -23,8 +23,7 @@
 #' @param ps an optional `numeric` vector of propensity scores, one for each
 #'   unit.
 #' @param treat.list a list of treatment statuses at each time point.
-#' @param covs.list an optional list of `data.frame`s of covariates of
-#'   covariates at each time point. For using \pkg{WeightIt} functions, this is
+#' @param covs.list an optional list of data frames of covariates at each time point. For using \pkg{WeightIt} functions, this is
 #'   not necessary, but for use with \pkg{cobalt} it is.
 #' @param ps.list an optional list of `numeric` vectors of propensity scores at
 #'   each time point.

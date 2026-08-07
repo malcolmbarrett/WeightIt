@@ -4,7 +4,7 @@
 #' @description
 #' `plot.weightit()` plots information about the weights depending
 #' on how they were estimated. Currently, only weighting using `method = "gbm"`
-#' or `"optweight"` are supported. To plot the distribution of weights, see
+#' or `"optweight"` is supported. To plot the distribution of weights, see
 #' [plot.summary.weightit()].
 #'
 #' @param x a `weightit` object; the output of a call to [weightit()].

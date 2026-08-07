@@ -58,7 +58,7 @@ used. See Details.}
 A numeric vector containing the desired predictions, except for the
 following circumstances when an ordinal or multinomial model was fit:
 \itemize{
-\item when \code{type = "response"} and \code{levels = NULL}, a numeric matrix with a row for each unit and
+\item when \code{type = "response"} and \code{level = NULL}, a numeric matrix with a row for each unit and
 a column for each level of the outcome with the predicted probability of
 the corresponding outcome in the cells
 \item when \code{type = "class"}, a factor with the modal predicted class for each

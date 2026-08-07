@@ -424,3 +424,36 @@ test_that("Continuous treatment", {
              n.trees = n.trees, n.samples = n.samples, n.burn = n.burn)
   }, "sampling weights cannot be used", ignore.case = TRUE)
 })
+
+test_that("The documented bart2() argument exceptions are enforced", {
+  skip_on_cran()
+  skip_if_not_installed("dbarts")
+
+  test_data <- readRDS(test_path("fixtures", "test_data.rds"))
+
+  f <- A ~ X1 + X2 + X3
+
+  #`seed` is bart2()'s own, which makes the fit reproducible across calls
+  W0 <- weightit(f, data = test_data, method = "bart", n.trees = 50L, seed = 123L)
+
+  # `samplerOnly = TRUE` would make bart2() return a sampler rather than a fit, so
+  # it has to be dropped before the call rather than passed through
+  expect_no_condition({
+    W1 <- weightit(f, data = test_data, method = "bart", n.trees = 50L, seed = 123L,
+                   samplerOnly = TRUE)
+  })
+
+  expect_equal(W1$weights, W0$weights)
+
+  # The rest of the documented exceptions are ignored rather than forwarded
+  expect_no_condition({
+    W2 <- weightit(f, data = test_data, method = "bart", n.trees = 50L, seed = 123L,
+                   combineChains = FALSE, keepCall = TRUE, verbose = FALSE,
+                   test = test_data[1:5, c("X1", "X2", "X3")],
+                   weights = rep(2, nrow(test_data)),
+                   subset = seq_len(10L),
+                   offset.test = rep(0, 5L))
+  })
+
+  expect_equal(W2$weights, W0$weights)
+})

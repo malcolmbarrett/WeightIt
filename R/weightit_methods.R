@@ -150,7 +150,7 @@
   ),
   "gbm" = list(
     treat_type = c("binary", "multinomial", "continuous", "censoring"),
-    estimand = c("ATE", "ATT", "ATC", "ATO", "ATM", "ATOS"),
+    estimand = c("ATE", "ATT", "ATC", "ATO", "ATM"),
     alias = c("gbm", "gbr"),
     description = "propensity score weighting with GBM",
     re_ok = FALSE,
@@ -190,7 +190,7 @@
     treat_type = c("binary", "multinomial", "continuous"),
     estimand = "ATE",
     alias = c("npcbps", "npcbgps"),
-    description = "non-parametric covariate balancing propensity score weighting",
+    description = "nonparametric covariate balancing propensity score weighting",
     re_ok = FALSE,
     ps = FALSE,
     msm_valid = FALSE,

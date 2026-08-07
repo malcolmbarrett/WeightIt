@@ -253,6 +253,6 @@ test_that("Objects with random effects round-trip through update() and print()",
   expect_equal(W2$weights, W$weights, tolerance = eps)
 
   out <- capture.output(print(W))
-  expect_true(any(grepl("+ baseline: X1_0, X2_0", out, fixed = TRUE)))
+  expect_true(any(grepl("+ time 1 (A_1): X1_0, X2_0", out, fixed = TRUE)))
   expect_false(any(grepl("clus", out, fixed = TRUE)))
 })

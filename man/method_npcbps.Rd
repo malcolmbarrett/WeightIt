@@ -39,7 +39,8 @@ Censoring weights are not available for this method, because \code{npCBPS()} pro
 \subsection{Longitudinal Treatments}{
 
 For longitudinal treatments, the weights are the product of the weights
-estimated at each time point. \strong{NOTE: the use of npCBPS with longitudinal treatments has not been validated!}
+estimated at each time point. \strong{NOTE: the use of npCBPS with longitudinal treatments has not been validated!} Because of this, \code{\link[=weightitMSM]{weightitMSM()}} errors when this method is
+requested; set \code{weightit.force = TRUE} to bypass that error.
 }
 
 \subsection{Sampling Weights}{
@@ -68,7 +69,7 @@ optimization problem over the weights. The constraints correspond to
 covariate balance, and the loss function is the empirical likelihood of the
 data given the weights. npCBPS is similar to \link[=method_ebal]{entropy balancing} and will generally produce similar results. Because the optimization problem of npCBPS is not convex it can be slow to converge or
 not converge at all, so approximate balance is allowed instead using the
-\code{cor.prior} argument, which controls the average deviation from zero
+\code{corprior} argument, which controls the average deviation from zero
 correlation between the treatment and covariates allowed.
 }
 \section{Additional Arguments}{
@@ -79,7 +80,7 @@ correlation between the treatment and covariates allowed.
 }
 \item{\code{int}}{\code{logical}; whether first-order interactions of the covariates are to be balanced. Default is \code{FALSE}.
 }
-\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \verb{quantile = list(x1 = c(.25, .5. , .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
+\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \code{quantile = list(x1 = c(.25, .5, .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates. Only allowed with binary and multi-category treatments.
 }
 }
 
@@ -130,7 +131,7 @@ political advertisements. \emph{The Annals of Applied Statistics}, 12(1), 156–
 \seealso{
 \code{\link[=weightit]{weightit()}}, \code{\link[=weightitMSM]{weightitMSM()}}, \code{\link{method_cbps}}
 
-\code{\link{method_optweight}}, which can also be used to perform npCBPS by setting \code{norm = "log"}. In generally, this \code{"optweight"} implementation is more stable and flexible.
+\code{\link{method_optweight}}, which can also be used to perform npCBPS by setting \code{norm = "log"}. In general, this \code{"optweight"} implementation is more stable and flexible.
 
 \pkgfun{CBPS}{npCBPS} for the fitting function
 }

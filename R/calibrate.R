@@ -27,8 +27,8 @@
 #' scores and the weights replaced by weights computed from the calibrated
 #' propensity scores.
 #'
-#' If the input is a numeric vector of weights, the output will be a numeric
-#' vector of the calibrated propensity scores.
+#' If the input is a numeric vector of propensity scores, the output will be a
+#' numeric vector of the calibrated propensity scores.
 #'
 #' @seealso [weightit()], [weightitMSM()]
 #'
@@ -121,7 +121,12 @@ calibrate.weightit <- function(x, method = "platt", ...) {
   attr(x, "calibrate") <- list(method = method)
 
   attr(x, "trim") <- NULL
+
+  #The M-estimation parts must always reproduce `x$weights`, and they describe the
+  #uncalibrated propensity score model. `Mparts.list` (from `by` or stabilization)
+  #has to go too, or it would be used in place of `Mparts`.
   attr(x, "Mparts") <- NULL
+  attr(x, "Mparts.list") <- NULL
 
   x
 }

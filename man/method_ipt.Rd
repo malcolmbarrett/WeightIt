@@ -97,7 +97,7 @@ potentially with some cost in precision.
 }
 \item{\code{int}}{\code{logical}; whether first-order interactions of the covariates are to be balanced. Default is \code{FALSE}.
 }
-\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \verb{quantile = list(x1 = c(.25, .5. , .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates.
+\item{\code{quantile}}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting \code{quantile = list(x1 = c(.25, .5, .75))} ensures the 25th, 50th, and 75th percentiles of \code{x1} in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., \code{.5}) or a vector (e.g., \code{c(.25, .5, .75)}) to request the same quantile(s) for all continuous covariates.
 }
 \item{\code{link}}{the link used to determine the inverse link for computing the (generalized) propensity scores. Default is \code{"logit"}, which is used in the original description of the method by Graham, Pinto, and Egel (2012), but \code{"probit"}, \code{"cauchit"}, \code{"cloglog"}, \code{"loglog"}, \code{"log"}, \code{"clog"}, and \code{"softplus"} are also allowed. Note that negative weights are possible with these last two and they should be used with caution. An object of class \code{"link-glm"} can also be supplied. The argument is passed to \code{\link[=quasibinomial]{quasibinomial()}}.
 }
@@ -109,7 +109,7 @@ The \code{stabilize} argument is ignored.
 \section{Additional Outputs}{
 
 \describe{
-\item{\code{obj}}{When \code{include.obj = TRUE}, the output of the call to \code{\link[=optim]{optim()}}, which contains the coefficient estimates and convergence information. For ATE fits or with multi-category treatments, a list of \code{rootSolve::multiroot()} outputs, one for each weighted group.
+\item{\code{obj}}{When \code{include.obj = TRUE}, the output of the call to \pkgfun{rootSolve}{multiroot}, which contains the coefficient estimates and convergence information. For ATE fits or with multi-category treatments, a list of \code{rootSolve::multiroot()} outputs, one for each weighted group.
 }
 }
 }

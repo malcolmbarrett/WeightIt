@@ -76,7 +76,7 @@
 #'
 #' In the presence of missing data, the following value(s) for `missing` are allowed:
 #'     \describe{
-#'       \item{`"ind"` (default)}{Missing variables are automatically handled by the boosting model. When using a `criterion` targeting covariate balance, for each variable with missingness, a new missingness indicator variable is created which takes the value 1 if the original covariate is `NA` and 0 otherwise. The missingness indicators are included as covariate to balance. The missing values in the covariates are then replaced with the covariate medians. Balance assessment then proceeds with this new set of covariates. The covariates output in the resulting `weightit` object will be the original covariates with the `NA`s.}
+#'       \item{`"ind"` (default)}{Missing variables are automatically handled by the boosting model. When using a `criterion` targeting covariate balance, for each variable with missingness, a new missingness indicator variable is created which takes the value 1 if the original covariate is `NA` and 0 otherwise. The missingness indicators are included as covariates to balance. The missing values in the covariates are then replaced with the covariate medians. Balance assessment then proceeds with this new set of covariates. The covariates output in the resulting `weightit` object will be the original covariates with the `NA`s.}
 #'     }
 #'
 #' ## M-estimation
@@ -87,7 +87,7 @@
 #'
 #' The following additional arguments can be specified:
 #'   \describe{
-#'     \item{`criterion`}{A string describing the balance criterion used to select the best weights. See [cobalt::bal.compute()] for allowable options for each treatment type. In addition, to optimize the cross-validation error instead of balance, `criterion` can be set as `"cv{#}`", where `{#}` is replaced by a number representing the number of cross-validation folds used (e.g., `"cv5"` for 5-fold cross-validation). For binary and multi-category treatments, the default is `"smd.mean"`, which minimizes the average absolute standard mean difference among the covariates between treatment groups. For continuous treatments, the default is `"p.mean"`, which minimizes the average absolute Pearson correlation between the treatment and covariates.
+#'     \item{`criterion`}{A string describing the balance criterion used to select the best weights. See [cobalt::bal.compute()] for allowable options for each treatment type. In addition, to optimize the cross-validation error instead of balance, `criterion` can be set as `"cv{#}"`, where `{#}` is replaced by a number representing the number of cross-validation folds used (e.g., `"cv5"` for 5-fold cross-validation). For binary and multi-category treatments, the default is `"smd.mean"`, which minimizes the average absolute standard mean difference among the covariates between treatment groups. For continuous treatments, the default is `"p.mean"`, which minimizes the average absolute Pearson correlation between the treatment and covariates.
 #'     }
 #'     \item{`trim.at`}{A number supplied to `at` in [trim()] which trims the weights from all the trees before choosing the best tree. This can be valuable when some weights are extreme, which occurs especially with continuous treatments. The default is 0 (i.e., no trimming).
 #'     }
@@ -97,13 +97,17 @@
 #'     }
 #'     \item{`n.trees`}{The maximum number of trees used. This is passed onto the `n.trees` argument in `gbm.fit()`. The default is 10000 for binary and multi-category treatments and 20000 for continuous treatments.
 #'     }
+#'     \item{`n.grid`}{When `criterion` is a balance-based criterion, the number of points in the initial coarse grid of trees searched before the search is refined around the best point. Default is `round(1 + sqrt(2 * (n.trees - start.tree + 1)))`. Must be between 2 and `n.trees`. Larger values make the initial search finer but slower.
+#'     }
+#'     \item{`n.cores`}{When `criterion` is a cross-validation criterion (i.e., `"cv{#}"`), the number of cores used by \pkgfun{gbm}{gbmCrossVal} to fit the folds in parallel. Default is 1 for serial fitting.
+#'     }
 #'     \item{`start.tree`}{The tree at which to start balance checking. If you know the best balance isn't in the first 100 trees, for example, you can set `start.tree = 101` so that balance statistics are not computed on the first 100 trees. This can save some time since balance checking takes up the bulk of the run time for some balance-based stopping methods, and is especially useful when running the same model adding more and more trees. The default is 1, i.e., to start from the very first tree in assessing balance.
 #'     }
 #'     \item{`interaction.depth`}{The depth of the trees. This is passed onto the `interaction.depth` argument in `gbm.fit()`. Higher values indicate better ability to capture nonlinear and nonadditive relationships. The default is 3 for binary and multi-category treatments and 4 for continuous treatments. This argument is tunable.
 #'     }
 #'     \item{`shrinkage`}{The shrinkage parameter applied to the trees. This is passed onto the `shrinkage` argument in `gbm.fit()`. The default is .01 for binary and multi-category treatments and .0005 for continuous treatments. The lower this value is, the more trees one may have to include to reach the optimum. This argument is tunable.
 #'     }
-#'     \item{`bag.fraction`}{The fraction of the units randomly selected to propose the next tree in the expansion. This is passed onto the `bag.fraction` argument in `gbm.fit()`. The default is 1, but smaller values should be tried. For values less then 1, subsequent runs with the same parameters will yield different results due to random sampling; be sure to seed the seed using [set.seed()] to ensure replicability of results.
+#'     \item{`bag.fraction`}{The fraction of the units randomly selected to propose the next tree in the expansion. This is passed onto the `bag.fraction` argument in `gbm.fit()`. The default is 1, but smaller values should be tried. For values less than 1, subsequent runs with the same parameters will yield different results due to random sampling; be sure to set the seed using [set.seed()] to ensure replicability of results.
 #'     }
 #'     \item{`use.offset`}{`logical`; whether to use the linear predictor resulting from a generalized linear model as an offset to the GBM model. If `TRUE`, this fits a logistic regression model (for binary treatments) or a linear regression model (for continuous treatments) and supplies the linear predictor to the `offset` argument of `gbm.fit()`. This often improves performance generally but especially when the true propensity score model is well approximated by a GLM, and this yields uniformly superior performance over `method = "glm"` with respect to `criterion`. Default is `FALSE` to omit the offset. Only allowed for binary and continuous treatments. This argument is tunable.
 #'     }
@@ -111,7 +115,7 @@
 #'
 #'   All other arguments take on the defaults of those in \pkgfun{gbm}{gbm.fit},
 #'   and some are not used at all. For binary and multi-category treatments with
-#'   a with cross-validation used as the criterion, `class.stratify.cv` is set
+#'   cross-validation used as the criterion, `class.stratify.cv` is set
 #'   to `TRUE` by default.
 #'
 #'   The `w` argument in `gbm.fit()` is ignored because sampling weights are
@@ -123,7 +127,7 @@
 #'
 #' Can also be `"kernel"` to use kernel density estimation, which calls [density()] to estimate the numerator and denominator densities for the weights. (This used to be requested by setting `use.kernel = TRUE`, which is now deprecated.)
 #'
-#' If unspecified, a density corresponding to the argument passed to `distribution`. If `"gaussian"` (the default), [dnorm()] is used. If `"tdist"`, a t-distribution with 4 degrees of freedom is used. If `"laplace"`, a Laplace distribution is used.}
+#' If unspecified, a density corresponding to the argument passed to `distribution` is used. If `"gaussian"` (the default), [dnorm()] is used. If `"tdist"`, a t-distribution with 4 degrees of freedom is used. If `"laplace"`, a Laplace distribution is used.}
 #'       \item{`bw`, `adjust`, `kernel`, `n`}{If `density = "kernel"`, the arguments to [density()]. The defaults are the same as those in `density()`.}
 #' }
 #'

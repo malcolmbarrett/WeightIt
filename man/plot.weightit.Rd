@@ -17,7 +17,7 @@ A \code{ggplot} object.
 \description{
 \code{plot.weightit()} plots information about the weights depending
 on how they were estimated. Currently, only weighting using \code{method = "gbm"}
-or \code{"optweight"} are supported. To plot the distribution of weights, see
+or \code{"optweight"} is supported. To plot the distribution of weights, see
 \code{\link[=plot.summary.weightit]{plot.summary.weightit()}}.
 }
 \details{

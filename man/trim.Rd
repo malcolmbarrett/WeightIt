@@ -18,9 +18,10 @@ trim(x, ...)
 \item{\dots}{not used.}
 
 \item{at}{\code{numeric}; either the quantile of the weights above which weights
-are to be trimmed. A single number between .5 and 1, or the number of
-weights to be trimmed (e.g., \code{at = 3} for the top 3 weights to be set to
-the 4th largest weight).}
+are to be trimmed, given as a single number between .5 and 1 (a value below
+.5 is replaced by its complement), or the number of weights to be trimmed,
+given as a number of 1 or greater (e.g., \code{at = 3} for the top 3 weights to
+be set to the 4th largest weight).}
 
 \item{lower}{\code{logical}; whether also to trim at the lower quantile (e.g., for
 \code{at = .9}, trimming at both .1 and .9, or for \code{at = 3}, trimming the top
@@ -58,14 +59,14 @@ differ from the some uses of the word "trim" (see the \code{drop} argument below
 are set to the weight at that quantile unless \code{drop = TRUE}, in which case
 they are set to 0. If \code{lower = TRUE}, all weights below 1 minus the quantile
 are trimmed. In general, trimming weights can increase imbalance but also
-decreases the variability of the weights, improving precision at the
+decrease the variability of the weights, improving precision at the
 potential expense of unbiasedness (Cole & Hernán, 2008). See Lee, Lessler,
-and Stuart (2011) and Thoemmes and Ong (2015) for discussions and simulation
+and Stuart (2011) and Thoemmes and Ong (2016) for discussions and simulation
 results of trimming weights at various quantiles. Note that trimming weights
 can also change the target population and therefore the estimand.
 
 When using \code{trim()} on a numeric vector of weights, it is helpful to include
-the treatment vector as well. The helps determine the type of treatment and
+the treatment vector as well. This helps determine the type of treatment and
 estimand, which are used to specify how trimming is performed. In particular,
 if the estimand is determined to be the ATT or ATC, the weights of the target
 (i.e., focal) group are ignored, since they should all be equal to 1.

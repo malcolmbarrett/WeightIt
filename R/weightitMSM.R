@@ -62,29 +62,18 @@
 #' @returns
 #' A `weightitMSM` object with the following elements:
 #' \item{weights}{The estimated weights, one for each unit.}
-#' \item{treat.list}{A list of the values of the time-varying treatment variables.}
-#' \item{covs.list}{A list of the covariates used in the fitting at each time point. Only includes the raw covariates, which may have been altered in the fitting process.}
+#' \item{treat.list}{A list of the values of the time-varying treatment variables, one entry per entry of `formula.list` and named for the variable modeled there. When censoring is modeled, the censoring indicators are included in place among the treatments, in the order they were fit; an entry's `"treat.type"` attribute is `"censoring"` when it is a censoring indicator, which is 0 for units still under observation, 1 for units censored at that time point, and `NA` for units censored earlier.}
+#' \item{covs.list}{A list of the covariates used in the fitting at each time point, aligned with `treat.list`. Only includes the raw covariates, which may have been altered in the fitting process.}
 #' \item{estimand}{"ATE", currently the only estimand for MSMs with binary or multi-category treatments.}
 #' \item{method}{The weight estimation method specified.}
 #' \item{s.weights}{The provided sampling weights.}
-#' \item{by}{A data.frame containing the `by` variable when specified.}
+#' \item{by}{A data frame containing the `by` variable when specified.}
 #' \item{stabilization}{The stabilization factors, if any.}
 #'
 #' When censoring is modeled (i.e., when any entry of `formula.list` has its left
-#' side wrapped in [.cens()]), `treat.list` and `covs.list` describe the *treatment*
-#' models only, while `formula.list` is kept exactly as supplied, markers included,
-#' so that [update()] round-trips. The following additional components describe the
-#' censoring models:
-#' \item{cens.list}{A list of the values of the censoring indicators, one entry per
-#' censoring time point. Each is 0 for units still under observation and 1 for units
-#' censored at that time point, and `NA` for units censored earlier.}
-#' \item{cens.covs.list}{A list of the covariates used to fit each censoring model.
-#' As with `covs.list`, only the raw covariates are included.}
-#' \item{cens.formula.list}{A list of the censoring model formulas, with the
-#' [.cens()] marker retained on the left side.}
-#' \item{cens.time}{The positions of the censoring models within `formula.list`, so
-#' that `formula.list[cens.time]` recovers them and their timing relative to the
-#' treatment models can be determined.}
+#' side wrapped in [.cens()]), `formula.list` is kept exactly as supplied, markers
+#' included, so that [update()] round-trips, and one additional component is
+#' returned:
 #' \item{at.risk}{A logical matrix with one row per unit and one column per entry of
 #' `formula.list`, named for the treatment or censoring variable modeled at that
 #' entry. Each column records which units were still under observation when that
@@ -121,7 +110,7 @@
 #' and before the second. Currently only "wide" data sets are supported, where each
 #' unit is represented by exactly one row that contains its covariate and
 #' treatment history encoded in separate variables. You can use [reshape()] or
-#' other functions to transform your data into this format; see example below.
+#' other functions to transform a long data set into this format.
 #'
 #' ## Censoring weights (IPCW)
 #'
@@ -344,9 +333,7 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
   #LHS of a formula in `formula.list` (e.g., `.cens(C) ~ x1 + x2`). They are
   #interleaved with the treatment models in temporal order and folded into the
   #final product as inverse probability of censoring weights.
-  is.cens <- vapply(treat.list, function(t) {
-    identical(get_treat_type(t), "censoring")
-  }, logical(1L))
+  is.cens <- is_cens_treat(treat.list)
 
   if (any(is.cens)) {
     #`method = "cbps"` is the only built-in method that estimates the weights for
@@ -658,34 +645,30 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
     }
 
     if (include.obj) {
-      #`treat.list` is still full length here, so censoring fit objects are named
-      #after their censoring indicator; it is subset in the output below.
       names(obj.list) <- names(treat.list)
     }
   }
 
   if (is_not_null(method) && all_the_same(w)) {
-    arg::wrn("all weights are {.val w[1L]}, possibly indicating an estimation failure")
+    arg::wrn("all weights are {.val {w[1L]}}, possibly indicating an estimation failure")
   }
 
   ## Assemble output object----
-  #`treat.list` and `covs.list` describe treatments only, so that printing, balance
-  #assessment, and stabilization operate on treatments alone; the censoring models
-  #are stored separately. `formula.list` is kept as supplied, `.cens()` markers
-  #included, so that `update()` round-trips.
+  #One entry per model in `formula.list`, censoring models included and in place: a
+  #censoring indicator is a treatment whose type is `"censoring"`, not a separate kind
+  #of thing, so everything that walks the models -- printing, summarizing, balance
+  #assessment -- walks a single list and reads each entry's treatment type. Names come
+  #from the modeled variable either way. `formula.list` is kept as supplied, `.cens()`
+  #markers included, so that `update()` round-trips.
   out <- list(weights = w,
-              treat.list = treat.list[!is.cens],
-              covs.list = simple.covs.list[!is.cens],
+              treat.list = treat.list,
+              covs.list = simple.covs.list,
               estimand = "ATE",
               method = method,
               s.weights = s.weights,
               by = processed.by,
               call = call,
               formula.list = formula.list,
-              cens.list = if (any(is.cens)) treat.list[is.cens],
-              cens.covs.list = if (any(is.cens)) simple.covs.list[is.cens],
-              cens.formula.list = if (any(is.cens)) formula.list[is.cens],
-              cens.time = if (any(is.cens)) which(is.cens),
               at.risk = if (any(is.cens)) {
                 #One column per model, treatment or censoring, giving the units
                 #still under observation when that model was fit. Needed to assess
@@ -767,51 +750,43 @@ print.weightitMSM <- function(x, ...) {
 
   cli::cat_line(" - treatment:")
   for (i in seq_along(x[["treat.list"]])) {
-    cli::cat_line(sprintf("    + time %s: %s",
+    cli::cat_line(sprintf("    + time %s (%s): %s",
                           i,
+                          names(x[["treat.list"]])[i],
                           switch(treat.types[i],
                                  continuous = "continuous",
                                  `multi-category` =,
                                  multinomial = sprintf("%s-category (%s)",
                                                        nunique(x[["treat.list"]][[i]]),
                                                        word_list(levels(x[["treat.list"]][[i]]), and.or = FALSE)),
+                                 #Out of the units this model was fit on, which are the
+                                 #ones with an indicator: a unit censored earlier was
+                                 #never eligible and its indicator is NA. This is the
+                                 #`at.risk` column for the model, computed from the
+                                 #indicator so that an object made by `as.weightitMSM()`,
+                                 #which has no `at.risk`, prints too.
+                                 censoring = {
+                                   C <- .make_cens_treat(x[["treat.list"]][[i]])
+
+                                   sprintf("censoring (IPCW); %s of %s units censored",
+                                           sum(C == 1, na.rm = TRUE), sum(!is.na(C)))
+                                 },
                                  binary = "2-category")))
   }
 
-  if (is_not_null(x[["cens.list"]])) {
-    cli::cat_line(" - censoring (IPCW):")
-    for (i in seq_along(x[["cens.list"]])) {
-      cli::cat_line(sprintf("    + %s: %s of %s units censored",
-                            names(x[["cens.list"]])[i],
-                            sum(.make_cens_treat(x[["cens.list"]][[i]]) == 1, na.rm = TRUE),
-                            nobs(x)))
-    }
-  }
-
-  if (is_not_null(x[["cens.covs.list"]])) {
-    cli::cat_line(" - censoring covariates:")
-    for (i in seq_along(x[["cens.covs.list"]])) {
-      cli::cat_line(sprintf("    + %s: %s",
-                            names(x[["cens.list"]])[i],
-                            if (is_null(x[["cens.covs.list"]][[i]])) "(none)"
-                            else word_list(names(x[["cens.covs.list"]][[i]]), and.or = FALSE)))
-    }
-  }
-
   if (is_not_null(x[["covs.list"]])) {
+    #Labelled by the model they belong to rather than by when they were measured
+    #("baseline", "after time 2"), so that the block lines up row for row with the
+    #treatment block above. A censoring model sits among the treatments, so the
+    #covariates of the model at position `i` are no longer those measured after
+    #treatment `i - 1`.
     cli::cat_line(" - covariates:")
     for (i in seq_along(x[["covs.list"]])) {
-      if (i == 1L) {
-        cli::cat_line(sprintf("    + baseline: %s",
-                              if (is_null(x[["covs.list"]][[i]])) "(none)"
-                              else word_list(names(x[["covs.list"]][[i]]), and.or = FALSE)))
-      }
-      else {
-        cli::cat_line(sprintf("    + after time %s: %s",
-                              i - 1L,
-                              if (is_null(x[["covs.list"]][[i]])) "(none)"
-                              else word_list(names(x[["covs.list"]][[i]]), and.or = FALSE)))
-      }
+      cli::cat_line(sprintf("    + time %s (%s): %s",
+                            i,
+                            names(x[["treat.list"]])[i],
+                            if (is_null(x[["covs.list"]][[i]])) "(none)"
+                            else word_list(names(x[["covs.list"]][[i]]), and.or = FALSE)))
     }
   }
 
@@ -838,16 +813,11 @@ print.weightitMSM <- function(x, ...) {
                }
                else {
                  paste(vapply(seq_along(stab.term.labels), function(i) {
-                   if (i == 1L) {
-                     sprintf("    + baseline: %s",
-                             if (is_null(stab.term.labels[[i]])) "(none)"
-                             else word_list(stab.term.labels[[i]], and.or = FALSE))
-                   }
-                   else {
-                     sprintf("    + after time %s: %s",
-                             i - 1L,
-                             word_list(stab.term.labels[[i]], and.or = FALSE))
-                   }
+                   sprintf("    + time %s (%s): %s",
+                           i,
+                           names(x[["treat.list"]])[i],
+                           if (is_null(stab.term.labels[[i]])) "(none)"
+                           else word_list(stab.term.labels[[i]], and.or = FALSE))
                  }, character(1L)), collapse = "\n")
                })
       })

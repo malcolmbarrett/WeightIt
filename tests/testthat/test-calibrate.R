@@ -124,6 +124,18 @@ test_that("calibrate.weightit() replaces the scores and the weights", {
   expect_no_error(vcov(glm_weightit(Y_B ~ A, data = d, weightit = Wc,
                                     family = binomial)))
 
+  # With `by`, the parts arrive as `Mparts.list`, which must go too
+  d2 <- d
+  d2$G <- factor(rep(c("a", "b"), length.out = nrow(d2)))
+  Wby <- weightit(A ~ X1 + X2, data = d2, method = "glm", by = ~G)
+  expect_false(is_null(attr(Wby, "Mparts.list", exact = TRUE)))
+
+  Wby_c <- calibrate(Wby)
+  expect_null(attr(Wby_c, "Mparts", exact = TRUE))
+  expect_null(attr(Wby_c, "Mparts.list", exact = TRUE))
+  expect_identical(lm_weightit(Y_C ~ A, data = d2, weightit = Wby_c)$vcov_type,
+                   "HC0")
+
   # method = "isoreg" is carried through too
   Wi <- calibrate(W, method = "isoreg")
   expect_identical(attr(Wi, "calibrate")$method, "isoreg")

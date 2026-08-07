@@ -21,6 +21,38 @@ WeightIt News and Updates
 
 * Fixed a bug in `print.weightitMSM()` in which the stabilization factors would be run together with the line that follows them.
 
+* Added a documentation page at `?method_ps` describing how weights are computed from propensity scores supplied to the `ps` argument of `weightit()`, including the `subclass` and density arguments that page accepts.
+
+* Fixed a bug in `get_w_from_ps()` (and `weightit()`) with `estimand = "ATOS"` in which only part of the candidate values of `alpha` were searched, so the resulting subset depended on which treatment level was coded as treated.
+
+* Fixed a bug in `summary.weightit()` in which the maximum of the weight range ignored the sampling weights while the minimum did not.
+
+* Fixed a bug in `summary.weightitMSM()` in which `weight.range = FALSE` was ignored.
+
+* `summary()` on a `weightitMSM` object that models censoring now includes an entry for each censoring model, placed among the treatment entries in the order the models were fit and named for its censoring indicator. Each covers the units still under observation when that model was fit, since the censored units have a weight of exactly 0 and are not part of the weighted sample. `plot()` can select one by name as well as by position, e.g. `plot(summary(W), time = "C_2")`.
+
+* `summary()` on a `weightitMSM` object gains a `which.time` argument, which restricts the summary to the given models, given as a vector of positions in `formula.list` or of treatment or censoring variable names; omit it for all of them. Selecting a subset does not renumber anything, so a model keeps the position it has in the whole sequence.
+
+* The headings in the printed summary of a `weightitMSM` object now name the model, as in `1. Treatment: A_1` and `2. Censoring: C_2`, where the number is the model's position in `formula.list`. Previously they were numbered by treatment time point and did not say which variable they were about.
+
+* In `plot()` on a `summary.weightitMSM` object, the `time` argument has been renamed `which.time` for consistency with `summary()`. `time` continues to work.
+
+* For a censoring model, the effective sample size reported by `summary()` is now measured against the units that model was fit on -- those still under observation entering it -- rather than against all units. With censoring at more than one time point, the latter counted units that had already dropped out and were never eligible.
+
+* Fixed a bug in `plot()` on a `summary.weightit` object in which the weights of units with no treatment value -- those censored at an earlier time point -- were displayed in a facet of their own, and in which a censoring model's weights were displayed as though the censoring indicator were a treatment.
+
+* Fixed a bug in `plot.summary.weightit()` in which the `bins` argument was ignored.
+
+* Fixed a bug in `method = "ebal"` with a vector-valued `tols`, which errored for binary and multi-category treatments.
+
+* Fixed a bug in `method = "ebal"` with continuous treatments in which supplying `d.moments` greater than any entry of a per-covariate `moments` vector (e.g., `moments = c(x1 = 2, x2 = 3)` with `d.moments = 3`) would hold only the *means* of the covariates to their unweighted values, rather than the requested number of moments -- i.e., raising `d.moments` reduced the number of moments held instead of increasing it.
+
+* With `method = "bart"`, `samplerOnly` is now ignored as documented rather than passed on to `dbarts::bart2()`, where it would cause an error.
+
+* `method = "gbm"` no longer accepts `estimand = "ATOS"`, which was listed as available but too slow to be practical.
+
+* After `trim()` or `calibrate()`, the components used for M-estimation are now removed, so `glm_weightit()` no longer computes standard errors from the untrimmed or uncalibrated weights. Such objects now use `vcov = "HC0"` by default; use `vcov = "BS"` or `"FWB"` to account for trimming.
+
 # `WeightIt` 2.0.0
 
 Several new features have been added, described in more detail below. In particular, these are censoring weights estimation and random effects in propensity score models.
@@ -33,7 +65,7 @@ Several new features have been added, described in more detail below. In particu
 
 * Each weighting method has a dedicated implementation for censoring weights, rather than reusing the binary-treatment machinery. Because inverse probability of censoring weights are only ever needed for the units still under observation, these estimate weights for that group alone, targeting the covariate distribution of the full at-risk sample. This avoids the wasted (and sometimes infeasible) problem of solving for weights among the censored units, which matters most when few units are censored. Censoring weights are available for `method` values `"glm"`, `"bart"`, `"cbps"`, `"ebal"`, `"energy"`, `"gbm"`, `"ipt"`, `"optweight"`, `"super"`, and `"cfd"`, as well as `method = NULL` (which yields complete-case weights) and a supplied `ps`. They are not available for `method = "npcbps"`. M-estimation-based standard errors are available for the same methods that support them for binary treatments.
 
-* `weightitMSM()` supports censoring models interleaved with the treatment models in `formula.list` in temporal order, as in `list(A_1 ~ X_0, A_2 ~ X_1 + A_1, .cens(C_2) ~ X_1 + A_1, A_3 ~ X_2 + A_2)`. Each model is fit only among the units still under observation at that time point, missing values are permitted in later treatments for units already censored, and the censoring weights are folded into the product of weights across time points. The new `cens.list`, `cens.covs.list`, `cens.formula.list`, `cens.time`, and `at.risk` components of the output describe the censoring models and are documented in the "Value" section of `?weightitMSM`. The `print()` method reports how many units were censored at each censoring time point and the covariates used to model it.
+* `weightitMSM()` supports censoring models interleaved with the treatment models in `formula.list` in temporal order, as in `list(A_1 ~ X_0, A_2 ~ X_1 + A_1, .cens(C_2) ~ X_1 + A_1, A_3 ~ X_2 + A_2)`. Each model is fit only among the units still under observation at that time point, missing values are permitted in later treatments for units already censored, and the censoring weights are folded into the product of weights across time points. Censoring is treated as a treatment type rather than as a separate kind of model: the censoring indicators sit among the treatments in `treat.list`, and their covariates in `covs.list`, in the order the models were fit, and the `print()` and `summary()` methods list them there too, identifying each entry by its position in `formula.list` and the variable modeled. The new `at.risk` component of the output records which units were under observation when each model was fit and is documented in the "Value" section of `?weightitMSM`.
 
 * In `weightitMSM()`, censoring time points are stabilized exactly as treatment time points are. With `stabilize = TRUE`, the numerator of a censoring weight is a model for that censoring indicator saturated in the preceding treatments (an intercept when no treatment precedes it), and `num.formula` adds stabilization factors to it as it does for a treatment. When `num.formula` is supplied as a list, it must therefore have one entry per entry of `formula.list`, censoring entries included.
 

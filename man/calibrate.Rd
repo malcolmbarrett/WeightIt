@@ -38,8 +38,8 @@ object with the propensity scores replaced with the calibrated propensity
 scores and the weights replaced by weights computed from the calibrated
 propensity scores.
 
-If the input is a numeric vector of weights, the output will be a numeric
-vector of the calibrated propensity scores.
+If the input is a numeric vector of propensity scores, the output will be a
+numeric vector of the calibrated propensity scores.
 }
 \description{
 \code{calibrate()} calibrates propensity scores used in weights. This

@@ -11,9 +11,16 @@
 
 \method{plot}{summary.weightit}(x, binwidth = NULL, bins = NULL, ...)
 
-\method{summary}{weightitMSM}(object, top = 5L, ignore.s.weights = FALSE, weight.range = TRUE, ...)
+\method{summary}{weightitMSM}(
+  object,
+  top = 5L,
+  ignore.s.weights = FALSE,
+  weight.range = TRUE,
+  which.time,
+  ...
+)
 
-\method{plot}{summary.weightitMSM}(x, binwidth = NULL, bins = NULL, time = 1L, ...)
+\method{plot}{summary.weightitMSM}(x, binwidth = NULL, bins = NULL, which.time = 1L, ..., time)
 }
 \arguments{
 \item{object}{a \code{weightit} or \code{weightitMSM} object; the output of a call to
@@ -39,8 +46,18 @@ a call to \code{summary.weightit()} or \code{summary.weightitMSM()}.}
 \item{binwidth, bins}{arguments passed to \code{\link[ggplot2:geom_histogram]{ggplot2::geom_histogram()}} to
 control the size and/or number of bins.}
 
-\item{time}{\code{numeric}; the time point for which to display the distribution
-of weights. Default is to plot the distribution for the first time points.}
+\item{which.time}{for \code{summary()}, which models to summarize, given as a vector
+of positions in \code{formula.list} or of treatment or censoring variable names;
+omit it to summarize all of them. For \code{plot()}, which single model to display
+the distribution of weights for, given as one position or one name; default
+is the first. This mirrors the argument of the same name in
+\pkgfun{cobalt}{bal.tab}, except that a value matching no model is an error
+rather than a warning, since here it decides what is computed. Note that when
+censoring is modeled, the censoring models occupy positions of their own, so
+positions do not count treatment time points alone; naming the variable
+avoids having to count.}
+
+\item{time}{for \code{plot()}, the former name of \code{which.time}, which still works.}
 }
 \value{
 For point treatments (i.e., \code{weightit} objects), \code{summary()} returns
@@ -50,15 +67,26 @@ a \code{summary.weightit} object with the following elements:
 \item{weight.top}{The units with the greatest weights in each treatment group; how many are included is determined by \code{top}.}
 \item{coef.of.var (Coef of Var)}{The coefficient of variation (standard deviation divided by mean) of the weights in each treatment group and overall.}
 \item{scaled.mad (MAD)}{The mean absolute deviation of the weights in each treatment group and overall divided by the mean of the weights in the corresponding group.}
-\item{negative entropy (Entropy)}{The negative entropy (\eqn{\sum w log(w)}) of the weights in each treatment group and overall divided by the mean of the weights in the corresponding group.}
+\item{negative entropy (Entropy)}{The negative entropy (\eqn{\frac{1}{n}\sum w \log(w)}) of the weights in each treatment group and overall, after dividing the weights by their mean in the corresponding group.}
+\item{weight.mean (Mean of Weights)}{The mean of the weights in each treatment group and overall. Only included when the weights are stabilized.}
 \item{num.zeros}{The number of weights equal to zero.}
 \item{effective.sample.size}{The effective sample size for each treatment group before and after weighting. See \code{\link[=ESS]{ESS()}}.}
 
 For longitudinal treatments (i.e., \code{weightitMSM} objects), \code{summary()}
-returns a list of the above elements for each treatment period.
+returns a list of the above elements for each treatment period. When censoring
+is modeled (see \code{\link[=.cens]{.cens()}}), each censoring model gets an entry of its own,
+placed among the treatment entries in the order the models were fit and named
+for its censoring indicator. Every entry summarizes the same weights -- the
+product across all the models -- and differs only in the sample it summarizes
+them over: a treatment entry splits by treatment group, and a censoring entry
+covers the units still under observation when that model was fit, since the
+censored units have a weight of exactly 0 and are not part of the weighted
+sample.
 
 \code{plot()} returns a \code{ggplot} object with a histogram displaying the
-distribution of the estimated weights. If the estimand is the ATT or ATC,
+distribution of the estimated weights. For a censoring model, only the weights
+of the units still under observation are displayed, matching what \code{summary()}
+reports. If the estimand is the ATT or ATC,
 only the weights for the non-focal group(s) will be displayed (since the
 weights for the focal group are all 1). A dotted line is displayed at the
 mean of the weights.

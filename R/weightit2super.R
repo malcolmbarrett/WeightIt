@@ -128,7 +128,7 @@
 #'   }
 #'   Note that this implementation differs from that of Pirracchio and Carone
 #'   (2018) in that here, balance is measured only on the terms included in the
-#'   model formula (i.e., and not their interactions unless specifically
+#'   model formula (i.e., not their interactions unless specifically
 #'   included), and balance results from a sample weighted using the estimated
 #'   predicted values as propensity scores, not a sample matched using
 #'   propensity score matching on the predicted values. Binary and continuous
@@ -213,7 +213,7 @@
 #' @examplesIf rlang::is_installed(c("SuperLearner", "MASS"))
 #' \donttest{data("lalonde", package = "cobalt")
 #'
-#' #Note: for time, all exmaples use a small set of
+#' #Note: for time, all examples use a small set of
 #' #      learners. Many more should be added if
 #' #      possible, including a variety of model
 #' #      types (e.g., parametric, flexible, tree-

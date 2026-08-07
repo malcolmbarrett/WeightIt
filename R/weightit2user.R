@@ -11,7 +11,7 @@
 #'
 #' The following arguments are automatically passed to the user-defined function, which should have named parameters corresponding to them:
 #'   \itemize{
-#'     \item{`treat`: a vector of treatment status for each unit. This comes directly from the left hand side of the formula passed to `weightit()` and so will have it's type (e.g., numeric, factor, etc.), which may need to be converted.}
+#'     \item{`treat`: a vector of treatment status for each unit. This comes directly from the left hand side of the formula passed to `weightit()` and so will have its type (e.g., numeric, factor, etc.), which may need to be converted.}
 #' \item{`covs`: a data frame of covariate values for each unit. This comes directly from the right hand side of the formula passed to `weightit()`. The covariates are processed so that all columns are numeric; all factor variables are split into dummies and all interactions are evaluated. All levels of factor variables are given dummies, so the matrix of the covariates is not full rank. Users can use [make_full_rank()], which accepts a numeric matrix or data frame and removes columns to make it full rank, if a full rank covariate matrix is desired.}
 #' \item{`s.weights`: a numeric vector of sampling weights, one for each unit.}
 #' \item{`ps`: a numeric vector of propensity scores.}
@@ -19,13 +19,15 @@
 #' \item{`estimand`: a character vector of length 1 containing the desired estimand. The characters will have been converted to uppercase. If "ATC" was supplied to estimand, `weightit()` sets `focal` to the control level (usually 0 or the lowest level of `treat`) and sets `estimand` to "ATT".}
 #' \item{`focal`: a character vector of length 1 containing the focal level of the treatment when the estimand is the ATT (or the ATC as detailed above). `weightit()` ensures the value of focal is a level of `treat`.}
 #' \item{`stabilize`: a logical vector of length 1. It is not processed by `weightit()` before it reaches the fitting function.}
+#' \item{`missing`: a character vector of length 1 containing the missingness method in effect, or `""` when no missing data are present. See the `missing` argument of [weightit()].}
+#' \item{`verbose`: a logical vector of length 1 indicating whether the fitting function should print additional output.}
 #' }
 #'
 #' None of these parameters are required to be in the fitting function. These are simply those that are automatically available.
 #'
 #' In addition, any additional arguments supplied to `weightit()` will be passed on to the fitting function. `weightit()` ensures the arguments correspond to the parameters of the fitting function and throws an error if an incorrectly named argument is supplied and the fitting function doesn't include `...` as a parameter.
 #'
-#' The fitting function must output either a numeric vector of weights or a list (or list-like object) with an entry named wither "w" or "weights". If a list, the list can contain other named entries, but only entries named "w", "weights", "ps", and "fit.obj" will be processed. "ps" is a vector of propensity scores and "fit.obj" should be an object used in the fitting process that a user may want to examine and that is included in the `weightit` output object as "obj" when `include.obj = TRUE`. The "ps" and "fit.obj" components are optional, but "weights" or "w" is required.
+#' The fitting function must output either a numeric vector of weights or a list (or list-like object) with an entry named either "w" or "weights". If a list, the list can contain other named entries, but only entries named "w", "weights", "ps", and "fit.obj" will be processed. "ps" is a vector of propensity scores and "fit.obj" should be an object used in the fitting process that a user may want to examine and that is included in the `weightit` output object as "obj" when `include.obj = TRUE`. The "ps" and "fit.obj" components are optional, but "weights" or "w" is required.
 #'
 #' ## Longitudinal Treatments
 #'

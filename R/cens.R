@@ -34,9 +34,11 @@
 #' The survival convention is used: `1` means the unit is *censored* (drops out of observation) and `0` means it remains under observation. This is the opposite of an "observed" or "event" indicator. When a censoring model is supplied to [weightit()], the returned propensity score is \eqn{P(C = 1 | X)}, the probability of *being censored*.
 #'
 #' @section Assessing balance:
-#' [cobalt::bal.tab()] cannot be used directly on the output of a censoring model. For a point-treatment `weightit` object it errors because every censored unit has a weight of 0, leaving one "treatment group" with no weight; for a `weightitMSM` object it errors because censoring leaves missing values in the later treatments, which `bal.tab()` does not allow.
+#' Because the target of a censoring model is the full at-risk sample rather than another treatment group, balance is assessed by comparing the weighted uncensored units against that sample.
 #'
-#' Because the target of a censoring model is the full at-risk sample rather than another treatment group, balance is assessed by comparing the weighted uncensored units against that sample. This can be done by stacking the two:
+#' Recent versions of \CRANpkg{cobalt} do this directly: [cobalt::bal.tab()] accepts a `weightit` object fit with a censoring model, as well as a `weightitMSM` object with censoring among its time points, and produces the comparison described above for each. See `cobalt::class-bal.tab.cens`.
+#'
+#' With an older \pkg{cobalt}, the comparison has to be built by hand, since `bal.tab()` would reject a point-treatment censoring object (every censored unit has a weight of 0, leaving one "treatment group" with no weight) and a `weightitMSM` object with censoring (which leaves missing values in the later treatments). Stacking the two samples produces the same quantity:
 #'
 #' ```
 #' u <- which(W$treat == 0)

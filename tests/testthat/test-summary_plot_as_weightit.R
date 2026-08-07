@@ -20,8 +20,8 @@ test_that("summary.weightit() reports the quantities it claims to", {
 
   expect_s3_class(s, "summary.weightit")
   expect_named(s, c("weight.range", "weight.top", "weight.mean", "coef.of.var",
-                    "scaled.mad", "negative.entropy", "effective.sample.size",
-                    "num.zeros"))
+                    "scaled.mad", "negative.entropy", "num.zeros",
+                    "effective.sample.size"))
 
   # The ESS table matches `ESS()` computed by hand within each treatment group
   ess <- s$effective.sample.size
@@ -70,7 +70,7 @@ test_that("summary.weightit() handles continuous treatments and zero weights", {
 
   s_cens <- summary(Wcens)
   expect_identical(sum(unlist(s_cens$num.zeros)), 0)
-  expect_true(all(s_cens$weight.range$all > 0))
+  expect_gt(min(unlist(s_cens$weight.range)), 0)
   expect_lt(s_cens$effective.sample.size["Weighted", "Total"], sum(d$C == 0L))
 })
 
@@ -91,8 +91,123 @@ test_that("summary.weightitMSM() summarizes each time point", {
     expect_s3_class(s[[i]], "summary.weightit")
   }
 
-  expect_output(print(s), "Time 1")
-  expect_output(print(s), "Time 2")
+  # Each heading gives the model's position in `formula.list`, whether it is a
+  # treatment or a censoring model, and the variable it is about
+  expect_output(print(s), "1. Treatment: A_1", fixed = TRUE)
+  expect_output(print(s), "2. Treatment: A_2", fixed = TRUE)
+})
+
+test_that("summary.weightit() names its groups the way it labels them", {
+  d <- test_data
+
+  s <- summary(weightit(A ~ X1 + X2 + X3, data = d, method = "glm", estimand = "ATE"))
+
+  # Every element split by group carries the same names, which are also the row labels
+  # of the printed tables. Pinned because a rename here turns `s$weight.range$<group>`
+  # into `NULL` at every call site, which reads as an empty result rather than an error.
+  grouped <- c("weight.range", "weight.top", "coef.of.var", "scaled.mad",
+               "negative.entropy", "num.zeros")
+
+  expect_identical(lapply(s[grouped], names),
+                   setNames(rep(list(c("Treated", "Control")), length(grouped)),
+                            grouped))
+
+  out <- cli::ansi_strip(capture.output(print(s)))
+  expect_match(out, "^Treated", all = FALSE)
+  expect_match(out, "^Control", all = FALSE)
+
+  # A treatment with no groups to split by is one group covering everyone
+  sc <- summary(weightit(Ac ~ X1 + X2 + X3, data = d, method = "glm"))
+  expect_identical(lapply(sc[grouped], names),
+                   setNames(rep(list("All"), length(grouped)), grouped))
+
+  # Stabilizing adds the mean of the weights, named the same way
+  ss <- summary(weightit(A ~ X1 + X2 + X3, data = d, method = "glm", stabilize = TRUE))
+  expect_named(ss$weight.mean, c("Treated", "Control"))
+})
+
+test_that("the weight-range plot marks a group whose weights are all equal", {
+  d <- test_data
+
+  # Under the ATT the focal group's weights are all exactly 1, so its range is a point.
+  # A span drawn between two identical endpoints would be an empty pair of brackets, so
+  # it gets a single mark instead.
+  s <- summary(weightit(A ~ X1 + X2 + X3, data = d, method = "glm", estimand = "ATT"))
+
+  expect_identical(s$weight.range$Treated, c(1, 1))
+
+  out <- cli::ansi_strip(capture.output(print(s)))
+  rows <- grep("^Treated |^Control ", out, value = TRUE)[1:2]
+
+  # Asserted against the span character rather than the brackets, since which bracket is
+  # drawn depends on whether Unicode is usable but whether a span is drawn at all does
+  # not
+  expect_no_match(rows[1L], cli::symbol$double_line, fixed = TRUE)
+  expect_match(rows[2L], cli::symbol$double_line, fixed = TRUE)
+})
+
+test_that(".text_box_plot() follows cli's Unicode fallback", {
+  #The span is a cli symbol; the brackets and the point marker are not, and used to stay
+  #Unicode in output that had otherwise degraded to ASCII -- visible under `testthat`,
+  #which sets `cli.unicode = FALSE`.
+  cells <- function(unicode) {
+    op <- options(cli.unicode = unicode)
+    on.exit(options(op))
+
+    d <- .text_box_plot(list(span = c(0, 1), point = c(0.5, 0.5)))
+
+    setNames(d[[2L]], rownames(d))
+  }
+
+  utf8 <- cells(TRUE)
+
+  expect_match(utf8[["span"]], "╞", fixed = TRUE)
+  expect_match(utf8[["span"]], "═", fixed = TRUE)
+  expect_match(utf8[["point"]], "│", fixed = TRUE)
+
+  # Nothing outside the ASCII set survives, the brackets and marker included
+  ascii <- cells(FALSE)
+
+  expect_match(ascii[["span"]], "|", fixed = TRUE)
+  expect_match(ascii[["span"]], "=", fixed = TRUE)
+  expect_match(ascii[["point"]], "|", fixed = TRUE)
+  expect_no_match(ascii, "[^ =|]")
+})
+
+test_that("print.summary.weightitMSM() heads the summary once and rules off each model", {
+  W <- weightitMSM(list(A_1 ~ X1_0 + X2_0,
+                        A_2 ~ X1_1 + X2_1 + A_1,
+                        A_3 ~ X1_2 + X2_2 + A_2),
+                   data = msmdata, method = "glm")
+
+  out <- cli::ansi_strip(capture.output(print(summary(W))))
+
+  # One header for the object as a whole, not one per model
+  expect_length(grep("Summary of weights", out, fixed = TRUE), 1L)
+
+  # A divider per model, each carrying that model's label. `cli::symbol$line` rather
+  # than the character itself, since cli falls back to ASCII where Unicode is unusable.
+  rule <- strrep(cli::symbol$line, 3L)
+  rules <- which(startsWith(out, rule))
+
+  expect_length(rules, 3L)
+  expect_identical(sub(sprintf("^%s+ (.*?) %s+$", cli::symbol$line, cli::symbol$line),
+                       "\\1", out[rules]),
+                   c("1. Treatment: A_1", "2. Treatment: A_2", "3. Treatment: A_3"))
+
+  # All drawn to one width, set by the widest line under any of them, so the models
+  # read as one block rather than as a ragged set of tables
+  expect_length(unique(nchar(out[rules])), 1L)
+
+  body <- out[-seq_len(rules[1L] - 1L)]
+  expect_identical(max(nchar(body)), nchar(out[rules][1L]))
+
+  # Every model gets its own divider, including a lone one
+  W1 <- weightitMSM(list(A_1 ~ X1_0 + X2_0), data = msmdata, method = "glm")
+  out1 <- cli::ansi_strip(capture.output(print(summary(W1))))
+
+  expect_length(which(startsWith(out1, rule)), 1L)
+  expect_match(out1, "1. Treatment: A_1", fixed = TRUE, all = FALSE)
 })
 
 # ---- plot() ----------------------------------------------------------------
@@ -127,6 +242,25 @@ test_that("plot.summary.weightit() returns a ggplot for both treatment types", {
 
   Wm <- weightit(Am ~ X1 + X2 + X3, data = d, method = "glm")
   expect_s3_class(plot(summary(Wm)), "ggplot")
+})
+
+test_that("plot.summary.weightit() honors `bins` and `binwidth`", {
+  d <- test_data
+
+  Wc <- weightit(Ac ~ X1 + X2 + X3, data = d, method = "glm")
+  s <- summary(Wc)
+
+  nbins <- function(p) {
+    length(unique(round(ggplot2::ggplot_build(p)$data[[1L]]$x, 8L)))
+  }
+
+  #`bins` used to be overwritten with 20 whenever `breaks` was not supplied, so
+  #the user's value never reached geom_histogram()
+  expect_gt(nbins(plot(s, bins = 60L)), nbins(plot(s, bins = 10L)))
+
+  #`binwidth` is not clobbered by a default bin count
+  w <- ggplot2::ggplot_build(plot(s, binwidth = 0.05))$data[[1L]]
+  expect_equal(unique(round(w$xmax - w$xmin, 8L)), 0.05)
 })
 
 test_that("plot.summary.weightitMSM() returns a plot per time point", {
@@ -224,6 +358,40 @@ test_that("as.weightitMSM() wraps weights for a longitudinal treatment", {
 
   expect_error(as.weightitMSM(w))
   expect_error(as.weightitMSM(w, treat.list = list(d$A_1, d$A_2[-1L])))
+})
+
+test_that("as.weightitMSM() takes a censoring indicator among the treatments", {
+  #Censoring is a treatment type, so an indicator goes in `treat.list` like any other
+  #entry. Such an object has no `at.risk`, which `weightitMSM()` builds while fitting, so
+  #printing and summarizing must read the risk set off the indicator instead: a unit
+  #censored earlier has no indicator here and was never eligible.
+  d <- msmdata
+
+  C <- rbinom(nrow(d), 1L, .2)
+  A_2 <- d$A_2
+  is.na(A_2[C == 1L]) <- TRUE
+
+  w <- runif(nrow(d), .5, 2)
+  w[C == 1L] <- 0
+
+  W <- as.weightitMSM(w, treat.list = list(A_1 = d$A_1, C = .cens(C), A_2 = A_2),
+                      covs.list = list(d[c("X1_0", "X2_0")],
+                                       d[c("X1_0", "X2_0")],
+                                       d[c("X1_1", "X2_1")]))
+
+  expect_null(W$at.risk)
+  expect_identical(unname(which(is_cens_treat(W$treat.list))), 2L)
+
+  expect_output(print(W),
+                sprintf("time 2 \\(C\\): censoring \\(IPCW\\); %s of %s units censored",
+                        sum(C == 1L), nrow(d)))
+
+  s <- summary(W)
+  expect_named(s, c("A_1", "C", "A_2"))
+  expect_output(print(s), "2. Censoring: C")
+
+  #The censoring entry covers the uncensored units, whose weights are all nonzero
+  expect_identical(unname(s$C$num.zeros), 0)
 })
 
 # ---- tidy() and glance() ---------------------------------------------------

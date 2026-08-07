@@ -13,7 +13,7 @@
 #'   (average treatment effect in the matched sample), and `"ATOS"` (average
 #'   treatment effect in the optimal subset). See Details.
 #' @param focal when `estimand` is `"ATT"` or `"ATC"`, which group should be
-#'   consider the (focal) "treated" or "control" group, respectively. If not
+#'   considered the (focal) "treated" or "control" group, respectively. If not
 #'   `NULL` and `estimand` is not `"ATT"` or `"ATC"`, `estimand` will
 #'   automatically be set to `"ATT"`.
 #' @param treated when treatment is binary, the value of `treat` that is
@@ -103,7 +103,7 @@
 #'
 #' For multi-category treatments, the propensity scores for each treatment are
 #' stratified separately as described in Hong (2012); for binary treatments,
-#' only one set of propensity scores are stratified and the subclass-propensity
+#' only one set of propensity scores is stratified and the subclass-propensity
 #' scores for the other treatment are computed as the complement of the
 #' propensity scores for the stratified treatment.
 #'
@@ -332,10 +332,14 @@ get_w_from_ps <- function(ps, treat, estimand = "ATE", focal = NULL, treated = N
   }
   else if (estimand == "ATOS") {
     #Crump et al. (2009)
+    #The candidate values of alpha are the sub-.5 half of both columns pooled, i.e.
+    #the `min(e, 1 - e)` of each unit. Bounding the loop by the number of units in
+    #one column instead would cut the search short and make the estimand depend on
+    #which level is treated, though `alpha * (1 - alpha)` is symmetric in `e`.
     ps.sorted <- sort(ps_mat)
     z <- ps_mat[, 1L] * ps_mat[, 2L]
     alpha.opt <- 0
-    for (i in seq_len(sum(ps_mat[, 2L] < .5))) {
+    for (i in seq_len(sum(ps_mat < .5))) {
       if (i == 1L || !check_if_zero(ps.sorted[i] - ps.sorted[i - 1L])) {
         alpha <- ps.sorted[i]
         a <- alpha * (1 - alpha)

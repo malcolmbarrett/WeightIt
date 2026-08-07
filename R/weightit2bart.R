@@ -72,8 +72,10 @@
 #' For convenience, `bart2()`-style arguments are translated to their `stan4bart()`
 #' equivalents when supplied (e.g., `n.chains` to `chains`, `n.threads` to `cores`,
 #' and BART hyperparameters like `n.trees` to `bart_args`), so the same argument
-#' names can be used with or without random effects. As with the single-level
-#' case, M-estimation is not supported.
+#' names can be used with or without random effects. Only the arguments described
+#' here are passed on; anything else, including the `bart2()` arguments listed as
+#' exceptions in *Additional Arguments* below, is ignored. As with the
+#' single-level case, M-estimation is not supported.
 #'
 #' ## Censoring Weights
 #'
@@ -107,9 +109,15 @@
 #' All arguments to \pkgfun{dbarts}{bart2} can be passed through `weightit()`
 #' or `weightitMSM()`, with the following exceptions:
 #'
-#' * `test`, `weights`,`subset`, `offset.test` are ignored
+#' * `test`, `weights`, `subset`, `offset.test`, and `samplerOnly` are ignored
 #' * `combineChains` is always set to `TRUE`
-#' * `samplerOnly` is always set to `FALSE`
+#' * `keepCall` is always set to `FALSE`
+#' * `verbose` is always set to `FALSE` (use `weightit()`'s own `verbose` argument
+#'   instead)
+#'
+#' When the model `formula` contains random effects terms, \pkgfun{stan4bart}{stan4bart}
+#' is used instead of `bart2()`, and the arguments it accepts differ; see
+#' *Multilevel Treatment Models* below.
 #'
 #' See also the *Reproducibility* section below for information on using the `seed` argument.
 #'
@@ -302,7 +310,7 @@ weightit2bart <- function(covs, treat, s.weights, subset, estimand, focal, stabi
     #dbarts::bart2()
     A <- ...mget(setdiff(c(rlang::fn_fmls_names(dbarts::bart2),
                            rlang::fn_fmls_names(dbarts::dbartsControl)),
-                         c("offset", "offset.test", "weights", "subset", "test")))
+                         c("offset", "offset.test", "weights", "subset", "test", "samplerOnly")))
 
     A[["data"]] <- treat
     A[["formula"]] <- covs
@@ -403,7 +411,7 @@ weightit2bart.multi <-  function(covs, treat, s.weights, subset, estimand, focal
     #dbarts::bart2()
     A <- ...mget(setdiff(c(rlang::fn_fmls_names(dbarts::bart2),
                            rlang::fn_fmls_names(dbarts::dbartsControl)),
-                         c("offset.test", "weights", "subset", "test")))
+                         c("offset.test", "weights", "subset", "test", "samplerOnly")))
 
     A[["formula"]] <- covs
     A[["keepCall"]] <- FALSE
@@ -504,7 +512,7 @@ weightit2bart.cont <- function(covs, treat, s.weights, subset, stabilize, missin
     #dbarts::bart2()
     A <- ...mget(setdiff(c(rlang::fn_fmls_names(dbarts::bart2),
                            rlang::fn_fmls_names(dbarts::dbartsControl)),
-                         c("offset", "offset.test", "weights", "subset", "test")))
+                         c("offset", "offset.test", "weights", "subset", "test", "samplerOnly")))
 
     A[["formula"]] <- covs
     A[["data"]] <- treat

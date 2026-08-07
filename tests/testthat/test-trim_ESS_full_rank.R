@@ -141,6 +141,34 @@ test_that("trim.weightit() leaves the focal group alone", {
                tolerance = eps)
 })
 
+test_that("trim.weightit() drops the M-estimation parts", {
+  d <- test_data
+
+  W <- weightit(A ~ X1 + X2 + X3, data = d, method = "glm", estimand = "ATE")
+  expect_false(is_null(attr(W, "Mparts", exact = TRUE)))
+
+  # Trimming is not a smooth function of the weights, so the parts, which would
+  # otherwise recompute the *untrimmed* weights, are dropped
+  expect_message(Wt <- trim(W, at = .9))
+
+  expect_null(attr(Wt, "Mparts", exact = TRUE))
+  expect_null(attr(Wt, "Mparts.list", exact = TRUE))
+
+  # `vcov` therefore falls back rather than reporting asymptotic SEs for weights
+  # that were never used
+  fit <- lm_weightit(Y_C ~ A, data = d, weightit = Wt)
+  expect_identical(fit$vcov_type, "HC0")
+
+  # Same when the parts arrive as a list, i.e. with `by`
+  d$G <- factor(rep(c("a", "b"), length.out = nrow(d)))
+  Wby <- weightit(A ~ X1 + X2, data = d, method = "glm", by = ~G)
+  expect_false(is_null(attr(Wby, "Mparts.list", exact = TRUE)))
+
+  expect_message(Wby_t <- trim(Wby, at = .9))
+  expect_null(attr(Wby_t, "Mparts", exact = TRUE))
+  expect_null(attr(Wby_t, "Mparts.list", exact = TRUE))
+})
+
 test_that("trim.default() works on a bare weight vector", {
   d <- test_data
 

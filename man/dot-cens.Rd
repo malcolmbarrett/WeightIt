@@ -48,9 +48,11 @@ The survival convention is used: \code{1} means the unit is \emph{censored} (dro
 
 \section{Assessing balance}{
 
-\code{\link[cobalt:bal.tab]{cobalt::bal.tab()}} cannot be used directly on the output of a censoring model. For a point-treatment \code{weightit} object it errors because every censored unit has a weight of 0, leaving one "treatment group" with no weight; for a \code{weightitMSM} object it errors because censoring leaves missing values in the later treatments, which \code{bal.tab()} does not allow.
+Because the target of a censoring model is the full at-risk sample rather than another treatment group, balance is assessed by comparing the weighted uncensored units against that sample.
 
-Because the target of a censoring model is the full at-risk sample rather than another treatment group, balance is assessed by comparing the weighted uncensored units against that sample. This can be done by stacking the two:
+Recent versions of \CRANpkg{cobalt} do this directly: \code{\link[cobalt:bal.tab]{cobalt::bal.tab()}} accepts a \code{weightit} object fit with a censoring model, as well as a \code{weightitMSM} object with censoring among its time points, and produces the comparison described above for each. See \code{cobalt::class-bal.tab.cens}.
+
+With an older \pkg{cobalt}, the comparison has to be built by hand, since \code{bal.tab()} would reject a point-treatment censoring object (every censored unit has a weight of 0, leaving one "treatment group" with no weight) and a \code{weightitMSM} object with censoring (which leaves missing values in the later treatments). Stacking the two samples produces the same quantity:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{u <- which(W$treat == 0)
 bal.tab(rbind(covs[u, ], covs),

@@ -3,7 +3,7 @@
 #'
 #' @description
 #' `anova()` is used to compare nested models fit with
-#' `glm_weightit()`, `mutinom_weightit()`, `ordinal_weightit()`, or
+#' `glm_weightit()`, `multinom_weightit()`, `ordinal_weightit()`, or
 #' `coxph_weightit()` using a Wald test that incorporates uncertainty in
 #' estimating the weights (if any).
 #'
@@ -287,7 +287,7 @@ anova.multinom_weightit <- function(object, object2, test = "Chisq",
 
   if (!identical(.attr(object, "vcov_type"), .attr(object2, "vcov_type")) &&
       !identical(.attr(object2, "vcov_type"), "none")) {
-    arg::wrn("different {.arg vcov`}types detected for each model; using the {.arg vcov} from the larger model")
+    arg::wrn("different {.arg vcov} types detected for each model; using the {.arg vcov} from the larger model")
   }
 
   b1 <- coef(object)

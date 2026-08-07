@@ -39,7 +39,7 @@
 #' call, and possibly covariates updated from `sbps()`. In addition, the
 #' `prop.subgroup` component contains the values of the coefficients \eqn{C} for the
 #' subgroups (which are either 0 or 1 for the standard SBPS), and the
-#' `moderator` component contains a data.frame with the moderator.
+#' `moderator` component contains a data frame with the moderator.
 #'
 #' This object has its own summary method and is compatible with \pkg{cobalt}
 #' functions. The `cluster` argument should be used with \pkg{cobalt} functions
@@ -549,9 +549,9 @@ print.summary.weightit.sbps <- function(x, ...) {
   for (g in seq_along(x)) {
     cat("\n")
 
-    cli::cat_line(.st(space(19L)),
+    cli::cat_line(strrep(cli::symbol$line, 19L),
                   .it(sprintf(" Subgroup: %s ", names(x)[g])),
-                  .st(space(19L)))
+                  strrep(cli::symbol$line, 19L))
 
     cat("\n")
     .print_summary_weightit_internal(x[[g]], ...)

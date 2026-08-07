@@ -202,3 +202,35 @@ test_that("get_w_from_ps() works for multi-category, PS 0/1", {
   expect_equal(get_w_from_ps(ps, treat, estimand = "ATO"), w_ato)
   expect_equal(get_w_from_ps(ps, treat, estimand = "ATM"), w_atm)
 })
+
+test_that("estimand = 'ATOS' is invariant to which level is treated", {
+  skip_on_cran()
+
+  # Crump et al.'s optimal subpopulation depends on the propensity score only
+  # through e(1 - e), which is unchanged by swapping the treatment labels. The
+  # candidate values of alpha searched are therefore the sub-.5 half of both
+  # columns pooled; bounding the search by one column's count instead used to
+  # truncate it, so a sample with few units below .5 got no trimming at all in
+  # one orientation and substantial trimming in the other.
+  set.seed(11)
+  n <- 2000L
+  x <- rnorm(n)
+  e <- plogis(1.5 + 1.2 * x)
+  A <- rbinom(n, 1L, e)
+
+  expect_lt(mean(e < .5), .2)
+
+  w  <- get_w_from_ps(e, A, estimand = "ATOS")
+  ws <- get_w_from_ps(1 - e, 1 - A, estimand = "ATOS")
+
+  expect_equal(attr(w, "alpha"), attr(ws, "alpha"))
+  expect_identical(unname(w == 0), unname(ws == 0))
+
+  # Something was actually dropped, so this is not vacuous
+  expect_gt(sum(w == 0), 0L)
+
+  # The retained units keep their ATE weights
+  keep <- w > 0
+  expect_equal(unname(w[keep]),
+               unname(get_w_from_ps(e, A, estimand = "ATE")[keep]))
+})

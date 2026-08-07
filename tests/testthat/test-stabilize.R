@@ -96,7 +96,7 @@ test_that("weightit(): the stabilization formula is stored in `stabilization`", 
 
   s <- summary(W)
   expect_length(s$weight.mean, 2L)
-  expect_equal(unname(s$weight.mean["treated"]),
+  expect_equal(unname(s$weight.mean["Treated"]),
                mean(W$weights[test_data$A == 1]),
                tolerance = eps)
 })
@@ -342,9 +342,9 @@ test_that("weightitMSM(): stabilization formulas are printed", {
   out <- capture.output(print(W))
 
   expect_true(any(grepl("stabilized; stabilization factors:", out, fixed = TRUE)))
-  expect_true(any(grepl("+ baseline: (none)", out, fixed = TRUE)))
-  expect_true(any(grepl("+ after time 1: A_1", out, fixed = TRUE)))
-  expect_true(any(grepl("+ after time 2: A_1, A_2, A_1:A_2", out, fixed = TRUE)))
+  expect_true(any(grepl("+ time 1 (A_1): (none)", out, fixed = TRUE)))
+  expect_true(any(grepl("+ time 2 (A_2): A_1", out, fixed = TRUE)))
+  expect_true(any(grepl("+ time 3 (A_3): A_1, A_2, A_1:A_2", out, fixed = TRUE)))
 
   #A single time point with an intercept-only numerator has no factors to name
   W1 <- weightitMSM(msm_formulas[1L], data = msmdata, method = "glm",

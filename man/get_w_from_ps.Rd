@@ -27,7 +27,7 @@ control), \code{"ATO"} (average treatment effect in the overlap), \code{"ATM"}
 treatment effect in the optimal subset). See Details.}
 
 \item{focal}{when \code{estimand} is \code{"ATT"} or \code{"ATC"}, which group should be
-consider the (focal) "treated" or "control" group, respectively. If not
+considered the (focal) "treated" or "control" group, respectively. If not
 \code{NULL} and \code{estimand} is not \code{"ATT"} or \code{"ATC"}, \code{estimand} will
 automatically be set to \code{"ATT"}.}
 
@@ -127,7 +127,7 @@ for all units in the subclass.
 
 For multi-category treatments, the propensity scores for each treatment are
 stratified separately as described in Hong (2012); for binary treatments,
-only one set of propensity scores are stratified and the subclass-propensity
+only one set of propensity scores is stratified and the subclass-propensity
 scores for the other treatment are computed as the complement of the
 propensity scores for the stratified treatment.
 

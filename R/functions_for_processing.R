@@ -378,7 +378,7 @@
     arg::arg_flag(is.MSM.method)
 
     if (!is.MSM.method) {
-      arg::msg("{(.method_to_phrase(method))} can be used with a single model when multiple time points are present. Using a seperate model for each time point. To use a single model, set {.arg is.MSM.method} to {.val {TRUE}}")
+      arg::msg("{(.method_to_phrase(method))} can be used with a single model when multiple time points are present, but a separate model for each time point will be used instead. To use a single model, set {.arg is.MSM.method} to {.val {TRUE}}")
     }
 
     return(is.MSM.method)
@@ -389,7 +389,7 @@
     arg::arg_flag(is.MSM.method)
 
     if (is.MSM.method) {
-      arg::wrn("{(.method_to_phrase(method))} cannot be used with a single model when multiple time points are present. Using a seperate model for each time point")
+      arg::wrn("{(.method_to_phrase(method))} cannot be used with a single model when multiple time points are present. Using a separate model for each time point")
     }
   }
 
@@ -2270,7 +2270,9 @@ generalized_inverse <- function(sigma, .try = TRUE) {
       f_new_r <- .f(.x, ...)
     }
 
-    if (j == 1L) {
+    #`jj`, the iteration index, not `j`, the parameter index: the Jacobian has to be
+    #allocated on the first pass whatever the first requested parameter is.
+    if (jj == 1L) {
       jacob <- matrix(0, nrow = length(f_new_r), ncol = length(.parm),
                       dimnames = list(names(f_new_r), names(.x)[.parm]))
     }
@@ -2310,8 +2312,6 @@ generalized_inverse <- function(sigma, .try = TRUE) {
     .f0 <- .f(.x, ...)
   }
 
-  n <- length(.x)
-
   d <- 1e-4
   r <- 4
   v <- 2
@@ -2319,7 +2319,8 @@ generalized_inverse <- function(sigma, .try = TRUE) {
   h <- abs(d * .x) + .eps * (abs(.x) < 1e-5)
 
   for (k in seq_len(r)) {
-    eps_i <- rep_with(0, .parm)
+    #Full-length, since it is indexed by `i` (a position in `.x`) and added to `.x`
+    eps_i <- rep_with(0, .x)
 
     for (ii in seq_along(.parm)) {
       i <- .parm[ii]
@@ -2332,7 +2333,9 @@ generalized_inverse <- function(sigma, .try = TRUE) {
                        left = (.f0 - .f(.x - 2 * eps_i, ...)) / (2 * h[i]))
 
       if (is_null(a)) {
-        a <- array(NA_real_, dim = c(length(a_k_ii), r, n))
+        #One slice per requested parameter, not per element of `.x`; the third
+        #index below is `ii`, which runs over `.parm`.
+        a <- array(NA_real_, dim = c(length(a_k_ii), r, length(.parm)))
       }
 
       a[, k, ii] <- a_k_ii

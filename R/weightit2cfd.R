@@ -36,7 +36,8 @@
 #'
 #' For longitudinal treatments, the weights are the product of the weights
 #' estimated at each time point. This method is not guaranteed to yield optimal
-#' balance at each time point. **NOTE: the use of CFD balancing with longitudinal treatments has not been validated!**
+#' balance at each time point. **NOTE: the use of CFD balancing with longitudinal treatments has not been validated!** Because of this, [weightitMSM()] errors when this method is
+#' requested; set `weightit.force = TRUE` to bypass that error.
 #'
 #' ## Sampling Weights
 #'
@@ -60,7 +61,7 @@
 #'
 #' @section Additional Arguments:
 #'
-#' The following following additional arguments can be specified:
+#' The following additional arguments can be specified:
 #'
 #' \describe{
 #'   \item{`kernel`}{the name of the kernel used to characterize the CFD. Allowable options include `"gaussian"` for the multivariate Gaussian kernel (the default), `"matern"` for the multivariate Matern kernel, `"energy"` for the energy distance kernel, `"laplace"` for the univariate Laplacian kernel, and `"t"` for the univariate t-distribution kernel.}
@@ -71,12 +72,13 @@
 #'   \item{`int`}{`logical`; whether first-order interactions of the covariates are to be balanced. Default is `FALSE`.}
 #'   \item{`tols`}{when `moments` is positive, a number corresponding to the maximum allowed standardized mean difference allowed. Default is 0. Ignored when `moments = 0`.}
 #'   \item{`min.w`}{the minimum allowable weight. Negative values (including `-Inf`) are allowed. Default is `1e-8`.}
+#'   \item{`bw_scale`}{a positive numeric scalar multiplying the kernel bandwidth, which is set by default to the median of the pairwise distances between units. Values below 1 make the kernel more local and values above 1 make it more diffuse. Default is 1. Ignored when `kernel = "energy"`, which has no bandwidth.}
 #' }
 #'
 #' For binary and multi-category treatments, the following additional arguments can be specified:
 #'   \describe{
 #'     \item{`improved`}{`logical`; whether to include an additional term in the CFD objective function to minimize the distance between pairs of groups when `estimand = "ATE"`. Default is `TRUE`.}
-#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5. , .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates.
+#'     \item{`quantile`}{a named list of quantiles (values between 0 and 1) for each continuous covariate, which are used to create additional variables that when balanced ensure balance on the corresponding quantile of the variable. For example, setting `quantile = list(x1 = c(.25, .5, .75))` ensures the 25th, 50th, and 75th percentiles of `x1` in each treatment group will be balanced in the weighted sample. Can also be a single number (e.g., `.5`) or a vector (e.g., `c(.25, .5, .75)`) to request the same quantile(s) for all continuous covariates.
 #'     }
 #'   }
 #'
@@ -120,12 +122,13 @@
 #'
 #' ## Reproducibility
 #'
-#' Although there are no stochastic components to the optimization, a feature
-#' turned off by default is to update the optimization based on how long the
-#' optimization has been running, which will vary across runs even when a seed
-#' is set and no parameters have been changed. See the discussion
+#' Although there are no stochastic components to the optimization, \pkg{osqp}
+#' by default updates the optimization based on how long the optimization has
+#' been running, which will vary across runs even when a seed is set and no
+#' parameters have been changed. See the discussion
 #' [here](https://github.com/osqp/osqp-r/issues/19) for more details. To ensure
-#' reproducibility by default, `adaptive_rho_interval` is set to 10. See
+#' reproducibility by default, `adaptive_rho_interval` is set to 50, which fixes
+#' the update schedule at a set number of iterations. See
 #' \pkgfun{osqp}{osqpSettings} for details.
 #'
 #' @note
