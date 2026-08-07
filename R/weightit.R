@@ -31,8 +31,14 @@
 #'   \CRANpkg{lme4}-style random effects terms (e.g., `~ (1 | school)`) for
 #'   methods that accept them, in which case a multilevel model is fit for the
 #'   numerator. Can only be used when `estimand = "ATE"` or with continuous
-#'   treatments. Default is `FALSE` for no stabilization. See also the
-#'   `stabilize` argument at [weightitMSM()].
+#'   treatments. Default is `FALSE` for no stabilization. Note that a continuous
+#'   treatment's weights already contain the unconditional density as their
+#'   numerator (see *Continuous Treatments* at [method_glm]), so `stabilize = TRUE`
+#'   (equivalently, `~1`) leaves them unchanged; the resulting object is not
+#'   reported as stabilized, and has no `stabilization` component. A formula with
+#'   terms in it, as in `stabilize = ~ x1`, does stabilize them. See also the
+#'   `stabilize` argument at [weightitMSM()], where a fully saturated model in the
+#'   preceding treatments makes `TRUE` meaningful for continuous treatments too.
 #' @param focal when `estimand` is set to `"ATT"` or `"ATC"`, which group to
 #'   consider the "treated" or "control" group, respectively. This group will not be weighted,
 #'   and the other groups will be weighted to resemble the focal group. If
@@ -507,6 +513,14 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
     num.w <- .num_stab_weights(sw_obj, censoring = treat.type == "censoring")
 
     obj$weights <- obj$weights / num.w
+
+    #A numerator of exactly 1 applied no stabilization factor, so the object is not
+    #stabilized and is not reported as such. This is what a continuous treatment's `~1`
+    #numerator comes to: the weights are already \eqn{f_A(a)/f_{A|X}(a)}, so the
+    #marginal density is in them, and a model for it with nothing to condition on
+    #estimates nothing and returns exactly 1. Everything downstream then matches an
+    #unstabilized fit, which is what the weights are.
+    stabilize <- !all(num.w == 1)
   }
 
   if (is_not_null(method) && is_null(ps)) {
@@ -547,16 +561,12 @@ weightit <- function(formula, data = NULL, method = "glm", estimand = "ATE", sta
                           censoring = treat.type == "censoring")
 
       #Every factor of the weights must be in the stack, since the parts are what
-      #the weights are recomputed from. A numerator that supplies no parts is fine
-      #only when it left the weights alone (e.g., the marginal density of a
-      #continuous treatment, which is estimated by nothing and is exactly 1); when
-      #it did change them (e.g., a mixed model, which has no M-estimation form),
-      #the object cannot support M-estimation at all.
+      #the weights are recomputed from. A numerator that supplies no parts changed
+      #them by something M-estimation cannot express (e.g., a mixed model), so the
+      #object cannot support M-estimation at all. A numerator that changed nothing
+      #never reaches here: `stabilize` was set to `FALSE` above.
       if (is_not_null(num.parts)) {
         attr(out, "Mparts.list") <- c(den.parts, num.parts)
-      }
-      else if (all(num.w == 1)) {
-        attr(out, "Mparts.list") <- den.parts
       }
     }
     else if (length(den.parts) == 1L) {

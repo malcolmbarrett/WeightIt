@@ -50,8 +50,14 @@ be used as the stabilization factor. The formula can contain
 \CRANpkg{lme4}-style random effects terms (e.g., \code{~ (1 | school)}) for
 methods that accept them, in which case a multilevel model is fit for the
 numerator. Can only be used when \code{estimand = "ATE"} or with continuous
-treatments. Default is \code{FALSE} for no stabilization. See also the
-\code{stabilize} argument at \code{\link[=weightitMSM]{weightitMSM()}}.}
+treatments. Default is \code{FALSE} for no stabilization. Note that a continuous
+treatment's weights already contain the unconditional density as their
+numerator (see \emph{Continuous Treatments} at \link{method_glm}), so \code{stabilize = TRUE}
+(equivalently, \code{~1}) leaves them unchanged; the resulting object is not
+reported as stabilized, and has no \code{stabilization} component. A formula with
+terms in it, as in \code{stabilize = ~ x1}, does stabilize them. See also the
+\code{stabilize} argument at \code{\link[=weightitMSM]{weightitMSM()}}, where a fully saturated model in the
+preceding treatments makes \code{TRUE} meaningful for continuous treatments too.}
 
 \item{focal}{when \code{estimand} is set to \code{"ATT"} or \code{"ATC"}, which group to
 consider the "treated" or "control" group, respectively. This group will not be weighted,

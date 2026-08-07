@@ -335,6 +335,77 @@ test_that("weightitMSM(): stabilization formulas can contain random effects", {
                "nope")
 })
 
+test_that("a numerator of exactly 1 is not reported as stabilization", {
+  #A continuous treatment's weights are already f_A(a)/f_{A|X}(a), so a `~1` numerator
+  #models the density they divide by: it estimates nothing and comes to exactly 1. An
+  #object whose numerator applied nothing is not stabilized and does not say it is.
+  W_F <- weightit(Ac ~ X1 + X2, data = test_data, method = "glm")
+
+  for (stab in list(TRUE, ~1)) {
+    W <- weightit(Ac ~ X1 + X2, data = test_data, method = "glm", stabilize = stab)
+
+    expect_null(W$stabilization, label = deparse1(stab))
+    expect_identical(unname(W$weights), unname(W_F$weights), label = deparse1(stab))
+  }
+
+  #A numerator with terms in it changes the weights, so it is reported
+  W_x <- weightit(Ac ~ X1 + X2, data = test_data, method = "glm", stabilize = ~X5)
+
+  expect_identical(deparse1(W_x$stabilization), "~X5")
+  expect_false(isTRUE(all.equal(unname(W_x$weights), unname(W_F$weights))))
+
+  #The rule is about the numerator coming to 1, not about the treatment being
+  #continuous: a binary treatment's `~1` numerator is the marginal probability, which
+  #is not 1, and stays
+  W_b <- weightit(A ~ X1 + X2, data = test_data, method = "glm", stabilize = TRUE)
+
+  expect_identical(deparse1(W_b$stabilization), "~1")
+  expect_false(isTRUE(all.equal(
+    unname(W_b$weights),
+    unname(weightit(A ~ X1 + X2, data = test_data, method = "glm")$weights))))
+})
+
+test_that("weightitMSM() drops the stabilization only when every numerator is 1", {
+  #Continuous treatments at every time point. At the first the numerator is `~1` and so
+  #is exactly 1, but at later ones it is a model for the preceding treatments and is
+  #not, which is what makes `stabilize = TRUE` meaningful for an MSM where it is inert
+  #for a point treatment.
+  set.seed(31)
+  n <- 1000
+
+  d <- data.frame(X1_0 = rnorm(n))
+  d$Ac_1 <- rnorm(n, d$X1_0)
+  d$X1_1 <- rnorm(n, 0.4 * d$Ac_1)
+  d$Ac_2 <- rnorm(n, d$X1_1 + 0.5 * d$Ac_1)
+
+  fl <- list(Ac_1 ~ X1_0, Ac_2 ~ X1_1 + Ac_1)
+
+  W2 <- weightitMSM(fl, data = d, method = "glm", stabilize = TRUE)
+
+  expect_length(W2$stabilization, 2L)
+  expect_identical(vapply(W2$stabilization, deparse1, character(1L)),
+                   c("~1", "~Ac_1"))
+  expect_false(isTRUE(all.equal(
+    unname(W2$weights),
+    unname(weightitMSM(fl, data = d, method = "glm")$weights))))
+
+  #With one continuous time point there is no preceding treatment to condition on, so
+  #the only numerator is 1 and nothing was stabilized
+  W1 <- weightitMSM(fl[1L], data = d, method = "glm", stabilize = TRUE)
+
+  expect_null(W1$stabilization)
+  expect_identical(unname(W1$weights),
+                   unname(weightitMSM(fl[1L], data = d, method = "glm")$weights))
+  expect_failure(expect_output(print(W1), "stabilized"))
+
+  #A binary treatment's numerators are probabilities rather than 1, so a single time
+  #point keeps its stabilization
+  Wb <- weightitMSM(msm_formulas[1L], data = msmdata, method = "glm", stabilize = TRUE)
+
+  expect_length(Wb$stabilization, 1L)
+  expect_output(print(Wb), "stabilized")
+})
+
 test_that("weightitMSM(): stabilization formulas are printed", {
   W <- weightitMSM(msm_formulas, data = msmdata, method = "glm",
                    stabilize = TRUE)

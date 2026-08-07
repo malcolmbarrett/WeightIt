@@ -13,9 +13,9 @@ WeightIt News and Updates
 
 * Stabilization formulas can now include random effects in both `weightit()` and `weightitMSM()`.
 
-* The `stabilize` component of `weightit` objects has been renamed to `stabilization` to match `weightitMSM` objects; this contains the stabilization formula, if any. This also mean the mean weights will be displayed in the `summary.weightit()` output.
+* The `stabilize` component of `weightit` objects has been renamed to `stabilization` to match `weightitMSM` objects; this contains the stabilization formula, if any. This also means the mean weights will be displayed in the `summary.weightit()` output.
 
-* In `weightit()`, setting `stabilize = TRUE` with a continuous treatment now requests a marginal density model in the numerator rather than being ignored with a warning.
+* In `weightit()`, setting `stabilize = TRUE` with a continuous treatment is accepted rather than being ignored with a warning. It requests a marginal density model in the numerator, which for a point treatment is the density the weights already divide by, so the weights are unchanged; such an object is not reported as stabilized and has no `stabilization` component. Supplying a formula with terms in it, as in `stabilize = ~ x1`, does change the weights. The same applies to any numerator that comes to exactly 1, in `weightit()` and `weightitMSM()` alike.
 
 * Fixed a bug in which the name of a multi-category (i.e., `factor` or `character`) treatment was lost when the treatment was processed. In `weightitMSM()`, this meant a multi-category time point would either be left unnamed or fail with an error about a replacement having length zero.
 

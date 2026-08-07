@@ -634,10 +634,20 @@ weightitMSM <- function(formula.list, data = NULL, method = "glm",
       #to length 0 (Reduce("*", list(NULL, x), init = y) is numeric(0)).
       w <-  Reduce("*", clear_null(sw.list), init = w)
 
-      unique.stabout <- unique(clear_null(stabout))
+      #Numerators of exactly 1 at every time point applied no stabilization factor, so
+      #the object is not stabilized and is not reported as such. All of them, not some:
+      #the entries line up with `formula.list`, so dropping only the inert ones would
+      #misalign the rest. See the note in `weightit()` for what makes a numerator
+      #inert.
+      if (all_apply(clear_null(sw.list), function(sw) all(sw == 1))) {
+        stabout <- NULL
+      }
+      else {
+        unique.stabout <- unique(clear_null(stabout))
 
-      if (length(unique.stabout) <= 1L) {
-        stabout <- unique.stabout
+        if (length(unique.stabout) <= 1L) {
+          stabout <- unique.stabout
+        }
       }
     }
     else {

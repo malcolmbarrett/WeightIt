@@ -624,22 +624,33 @@ test_that("Continuous treatment: stabilize composes with M-estimation", {
   fit <- lm_weightit(Y_C ~ Ac, data = test_data, weightit = W)
   expect_true(all(is.finite(sqrt(diag(vcov(fit))))))
 
-  # `stabilize = TRUE` is the marginal-density numerator, i.e., exactly `~1`
+  # `stabilize = TRUE` is the marginal-density numerator, i.e., exactly `~1`. A
+  # continuous treatment's weights are already f_A(a)/f_{A|X}(a), so that numerator is
+  # the density they divide by: it estimates nothing and comes to exactly 1.
   expect_no_condition({
     W_T <- weightit(Ac ~ X1 + X2 + X3, data = test_data, method = "glm",
                     stabilize = TRUE)
   })
 
-  expect_equal(W_T$weights,
-               weightit(Ac ~ X1 + X2 + X3, data = test_data, method = "glm",
-                        stabilize = ~1)$weights,
-               tolerance = eps)
+  W_1 <- weightit(Ac ~ X1 + X2 + X3, data = test_data, method = "glm", stabilize = ~1)
+  W_F <- weightit(Ac ~ X1 + X2 + X3, data = test_data, method = "glm")
 
-  expect_identical(deparse1(W_T$stabilization), "~1")
+  expect_equal(W_T$weights, W_1$weights, tolerance = eps)
 
-  # The marginal density of a continuous treatment estimates nothing and leaves the
-  # weights alone, so the numerator supplies no M-estimation part and the
-  # denominator's alone still reproduce the weights
-  expect_length(attr(W_T, "Mparts.list"), 1L)
+  # Nothing was stabilized, so the object does not say it was. Exactly, not to a
+  # tolerance: the numerator is a literal vector of 1s, not a near-1 estimate.
+  expect_identical(unname(W_T$weights), unname(W_F$weights))
+  expect_null(W_T$stabilization)
+  expect_null(W_1$stabilization)
+  expect_failure(expect_output(print(W_T), "stabilized"))
+
+  # ...which leaves an object indistinguishable from the unstabilized fit, M-estimation
+  # bookkeeping included: a single `Mparts` rather than a one-element `Mparts.list`
+  expect_null(attr(W_T, "Mparts.list", exact = TRUE))
+  expect_length(attr(W_T, "Mparts", exact = TRUE),
+                length(attr(W_F, "Mparts", exact = TRUE)))
   expect_M_parts_okay(W_T, tolerance = eps)
+
+  # A numerator with terms in it is a real one and is reported
+  expect_identical(deparse1(W$stabilization), "~X5")
 })
