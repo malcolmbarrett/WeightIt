@@ -2231,7 +2231,7 @@ test_that("summary(which.time =) restricts which models are summarized", {
   expect_true(any(grepl("4. Treatment: A_3", out, fixed = TRUE)))
   expect_false(any(grepl("1. Treatment: A_1", out, fixed = TRUE)))
 
-  # A single selected model is still labelled, since which one it is cannot
+  # A single selected model is still labeled, since which one it is cannot
   # otherwise be told
   expect_true(any(grepl("3. Censoring: C_2",
                         capture.output(print(summary(W, which.time = "C_2"))),

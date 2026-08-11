@@ -438,7 +438,7 @@ test_that("tidy() and glance() work for every outcome-model class", {
 
     # `exponentiate = TRUE` transforms the estimate and its limits together. It also
     # drops the standard error, since that is not the transform of the original, so the
-    # remaining columns must still be labelled correctly rather than shifted by one.
+    # remaining columns must still be labeled correctly rather than shifted by one.
     tid_exp <- generics::tidy(fit, conf.int = TRUE, exponentiate = TRUE)
     expect_named(tid_exp, c("term", "estimate", "statistic", "p.value",
                             "conf.low", "conf.high"))

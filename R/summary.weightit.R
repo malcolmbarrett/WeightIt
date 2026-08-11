@@ -278,7 +278,7 @@ plot.summary.weightit <- function(x, binwidth = NULL, bins = NULL, ...) {
     #The censored units have a weight of exactly 0 and are not part of the weighted
     #sample, so the distribution shown is that of the units still under observation,
     #matching what `summary()` reports. Faceting by the indicator would instead show a
-    #spike at 0 next to the weights of interest, labelled as treatment groups.
+    #spike at 0 next to the weights of interest, labeled as treatment groups.
     w <- w[which(.make_cens_treat(t) == 0)]
 
     subtitle <- "For Units Still Under Observation"
@@ -385,7 +385,7 @@ summary.weightitMSM <- function(object, top = 5L, ignore.s.weights = FALSE, weig
 
   attr(out.list, "labels") <- labels
 
-  #A subset is always labelled when printed: which time point is being shown cannot be
+  #A subset is always labeled when printed: which time point is being shown cannot be
   #inferred from a summary standing on its own.
   attr(out.list, "subset") <- length(keep) < n.models
 

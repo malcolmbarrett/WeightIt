@@ -785,7 +785,7 @@ print.weightitMSM <- function(x, ...) {
   }
 
   if (is_not_null(x[["covs.list"]])) {
-    #Labelled by the model they belong to rather than by when they were measured
+    #Labeled by the model they belong to rather than by when they were measured
     #("baseline", "after time 2"), so that the block lines up row for row with the
     #treatment block above. A censoring model sits among the treatments, so the
     #covariates of the model at position `i` are no longer those measured after

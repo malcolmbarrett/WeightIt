@@ -885,7 +885,7 @@ tidy.glm_weightit <- function(x, conf.int = FALSE, conf.level = 0.95, exponentia
   #`transform` drops the standard error, since a transformed estimate's SE is not the
   #transform of the original. Assuming a fixed set of five names therefore left the
   #limits unnamed when `conf.int = TRUE` and shifted every name by one when
-  #`exponentiate = TRUE`, so the statistic was labelled `std.error`. Map from the
+  #`exponentiate = TRUE`, so the statistic was labeled `std.error`. Map from the
   #columns actually present instead.
   cn <- colnames(s$coefficients)
   nms <- cn
