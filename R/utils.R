@@ -1255,7 +1255,7 @@ rep_with <- function(x, y) {
   rep.int(x, length(y)) |>
     setNames(names(y))
 }
-is_null <- function(x) {length(unclass(x)) == 0L}
+is_null <- function(x) {isTRUE(length(x) == 0L)}
 is_not_null <- function(x) {!is_null(x)}
 `%or%` <- function(x, y) {
   # like `%||%` but works for non-NULL length 0 objects
