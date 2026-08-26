@@ -26,3 +26,75 @@
 * ~~**Target-based balance assessment.**~~ Done in *cobalt* 5.0.0, which compares the weighted uncensored units against the at-risk sample and handles a censoring model sitting among longitudinal treatments. `DESCRIPTION` and `test-censoring.R` now name that version rather than a placeholder.
 * **A fast test tier that runs on CRAN.** 277 of 286 `test_that()` blocks are behind `skip_on_cran()`, so CRAN effectively runs 9 of them. A small fast subset that always runs would catch platform-specific breakage that currently only surfaces locally.
 * **Coverage in CI**, with the `NOT_CRAN=true` and non-parallel caveats baked in (see below) so the number is meaningful.
+
+## Running the checks on this machine
+
+Two environment traps, both of which have cost whole check runs.
+
+### `R CMD check` hangs at "checking use of S3 registration"
+
+The symptom is a check that sits on that line forever at **0% CPU** — not slow, stopped.
+That step preloads the base and recommended packages, `tcltk` among them, and
+`loadNamespace("tcltk")` blocks indefinitely here: `/opt/X11` exists but
+`XQuartz.app` does not, and `DISPLAY` is set to an XQuartz launchd socket that nothing
+is serving, so Tk waits on a connection that will never be accepted.
+
+The workaround is one line:
+
+```sh
+unset DISPLAY   # then R CMD build / R CMD check as usual
+```
+
+`tcltk` then loads in about a second with a harmless `no display name and no $DISPLAY
+environment variable` warning. The real fix is to reinstall XQuartz or drop the stale
+`DISPLAY` from the environment.
+
+Worth knowing because the same root cause wears three different faces:
+
+- this hang, in WeightIt's own check;
+- `checking Rd files ... WARNING` / `checking for unstated dependencies in examples ...
+  WARNING` in *cobalt*, both reading `bal.tab.cem.match.Rd:31: couldn't connect to
+  display ""` — `cem` loads `tcltk`. These show up in *cobalt*'s revdep results against
+  any version of WeightIt and are not real problems; they disappear with `DISPLAY`
+  unset;
+- `cem` hanging *cobalt*'s build outright, which `cobalt/_dev/refactor-notes.md`
+  § "`R CMD check`" already records as "`cem` must not be installed". That note predates
+  knowing why, and could say so now.
+
+Diagnosing it is quick if you know the shape: loading every package in `Suggests` takes
+about a second each, so a probe that loads them one at a time under a timeout finds
+nothing. The culprit is in the *preload* list, not in our dependencies.
+
+### `R CMD build` cannot run while `revdepcheck` is going
+
+`R CMD build` copies the entire package directory to a temp dir **before** applying
+`.Rbuildignore`, so a concurrent `revdepcheck` rewriting `revdep/library.noindex/`
+breaks the copy:
+
+```
+cp: WeightIt/revdep/library.noindex/CIMTx: No such file or directory
+ ERROR
+copying to build directory failed
+```
+
+`^revdep$` being in `.Rbuildignore` does not help — the exclusion is applied to the copy,
+not to the copying. Build from a clean export instead:
+
+```sh
+rsync -a --exclude revdep --exclude .git /path/to/WeightIt/ /tmp/src/WeightIt/
+R CMD build /tmp/src/WeightIt
+```
+
+### Timing NOTEs under load
+
+`checking examples` reports elapsed time, so running a check while `revdepcheck` has
+four workers going inflates it. `calibrate`'s example crossed the 5s threshold that way
+at 5.29s elapsed against 3.04s CPU; run on its own it is ~2.6s user / ~2.9s elapsed.
+Compare CPU against elapsed before believing a timing NOTE.
+
+### The test suite
+
+`devtools::test()` needs `NOT_CRAN=true` to run more than a handful of blocks: 277 of
+286 `test_that()` blocks are behind `skip_on_cran()`, which is also why the `checking
+tests` step of `R CMD check` finishes in seconds and proves little. Run the suite
+separately from the check.
