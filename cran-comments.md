@@ -22,10 +22,18 @@ is deliberately a small subset.
 
 ## Reverse dependencies
 
-WeightIt has 23 reverse dependencies. These were checked with `revdepcheck`
-against both the CRAN and development versions.
+All 23 reverse dependencies were checked with `revdepcheck` against both the CRAN
+and the development version. One was newly broken:
 
-<!-- Summary to be filled in from revdep/README.md once the run completes. -->
+* *cobalt* 5.0.0 -- two test failures, caused by a *WeightIt* bug that this release
+  fixes: a censoring marker written as `WeightIt::.cens(C)` was named after the whole
+  call rather than after the indicator, and *cobalt*'s fixtures use that spelling.
+  The revdepcheck run above predates the fix. Re-checking *cobalt* 5.0.0 against the
+  fixed version gives `Status: OK`, with `checking tests ... OK`.
+
+Nothing else regressed. *jointVIP* fails identically against both versions, so its
+error is unrelated to this release, and *mvGPS* loses a warning. The remaining 20 are
+unchanged.
 
 ## Notes on this release
 
