@@ -271,6 +271,9 @@ NULL
 weightit2cbps <- function(covs, treat, s.weights, estimand, focal, subset,
                           stabilize, missing, verbose, ...) {
 
+  #Read before `subset` narrows `treat`; see `.recorded_treated_level()`.
+  t.lev <- .recorded_treated_level(treat)
+
   covs <- covs[subset, , drop = FALSE]
   treat <- treat[subset]
   s.weights <- s.weights[subset]
@@ -289,7 +292,7 @@ weightit2cbps <- function(covs, treat, s.weights, estimand, focal, subset,
                                 treat = treat) |>
     .make_covs_full_rank()
 
-  t.lev <- .get_treated_level(treat, estimand, focal)
+  t.lev <- t.lev %or% .get_treated_level(treat, estimand, focal)
   treat <- binarize(treat, one = t.lev)
 
   mod_covs <- cbind(`(Intercept)` = 1, scale(svd(covs)$u))

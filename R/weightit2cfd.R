@@ -192,6 +192,9 @@ NULL
 weightit2cfd <- function(covs, treat, s.weights, subset, estimand, focal,
                          missing, verbose, ...) {
 
+  #Read before `subset` narrows `treat`; see `.recorded_treated_level()`.
+  t.lev <- .recorded_treated_level(treat)
+
   missing <- .process_missing2(missing, covs)
 
   if (missing == "ind") {
@@ -210,7 +213,7 @@ weightit2cfd <- function(covs, treat, s.weights, subset, estimand, focal,
   treat <- treat[subset]
   s.weights <- s.weights[subset]
 
-  t.lev <- .get_treated_level(treat, estimand, focal)
+  t.lev <- t.lev %or% .get_treated_level(treat, estimand, focal)
   treat <- binarize(treat, one = t.lev)
 
   n <- length(treat)

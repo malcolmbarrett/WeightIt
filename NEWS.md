@@ -1,7 +1,7 @@
 WeightIt News and Updates
 ======
 
-# `WeightIt` (development version)
+# `WeightIt` 2.1.0
 
 * With `method = "bart"`, `use.offset` can now be set to `TRUE` to use the linear predictor of a GLM as an offset in the BART model.
 
@@ -52,6 +52,10 @@ WeightIt News and Updates
 * `method = "gbm"` no longer accepts `estimand = "ATOS"`, which was listed as available but too slow to be practical.
 
 * After `trim()` or `calibrate()`, the components used for M-estimation are now removed, so `glm_weightit()` no longer computes standard errors from the untrimmed or uncalibrated weights. Such objects now use `vcov = "HC0"` by default; use `vcov = "BS"` or `"FWB"` to account for trimming.
+
+* `.cens()` is now *cobalt*'s `.cens()`, re-exported. *cobalt* 5.0.0 gained its own copy so that `cobalt::bal.tab()` could recognize a censoring model, and two identically named exports meant one masked the other on `library(WeightIt)`. There is now one function: `.cens()` behaves exactly as before, and an indicator tagged with either package attached is the same object and accepted by both. *cobalt* 5.0.0 or later is required.
+
+* Relatedly, the `[` method for `treat` objects is now *cobalt*'s as well. *WeightIt* tags its processed treatments with *cobalt*'s `treat` class (see `cobalt::treat-class`) and no longer registers a competing method for it. This is internal; no user-facing behavior changes.
 
 # `WeightIt` 2.0.0
 

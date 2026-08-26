@@ -725,6 +725,17 @@
   unname(ct["treated"])
 }
 
+#The treated level of a binary treatment as `weightit()` or `weightit.fit()` recorded it,
+#read off the treatment before `subset` narrows it. `[` on a `treat` is cobalt's method
+#(see `cobalt::treat-class`) and carries cobalt's own attributes, not this one, so a
+#method that subsets `treat` first would have to resolve the level again -- and say so a
+#second time, once per `by` level, whenever the coding is not one that speaks for itself.
+#Returns `NULL` when nothing was recorded, leaving `.get_treated_level()` to do the work
+#as before.
+.recorded_treated_level <- function(treat) {
+  .attr(treat, "treated")
+}
+
 .process_by <- function(by, data, treat, treat.name = NULL, by.arg = "by") {
 
   ##Process by

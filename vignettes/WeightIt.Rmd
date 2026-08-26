@@ -248,6 +248,6 @@ fitc <- glm_weightit(Y_B ~ A_1 + A_2 + A_3,
 summary(fitc)
 ```
 
-See `?.cens` for more, including how to assess balance, which requires a little care because the target of a censoring model is the full at-risk sample rather than another treatment group.
+Balance for a censoring model is assessed against the full at-risk sample rather than against another treatment group, and `bal.tab()` does this directly for an object like `Wc`. See `?.cens` for more.
 
 ## References

@@ -869,7 +869,7 @@ get_covs_and_treat_from_formula2 <- function(f, data = NULL, sep = "", ...) {
       covs <- make_df(ncol = 0L, nrow = names(treat) %or% length(treat))
       covs.matrix <- model.matrix(tt.covs, data = covs)
 
-      class(treat) <- unique(c("treat", class(treat)))
+      treat <- .set_treat_class(treat)
       attr(treat, "treat.name") <- treat.name
 
       if (censoring) {
@@ -1053,7 +1053,7 @@ get_covs_and_treat_from_formula2 <- function(f, data = NULL, sep = "", ...) {
   }
 
   if (is_not_null(treat)) {
-    class(treat) <- unique(c("treat", class(treat)))
+    treat <- .set_treat_class(treat)
     attr(treat, "treat.name") <- treat.name
 
     if (censoring) {

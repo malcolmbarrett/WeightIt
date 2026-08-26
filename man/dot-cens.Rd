@@ -10,12 +10,14 @@
 \item{x}{a censoring indicator: a numeric variable taking only the values 0 (still under observation) and 1 (censored), a logical variable, or a factor with levels \code{0}/\code{1} or \code{FALSE}/\code{TRUE}.}
 }
 \value{
-\code{x} coerced to a 0/1 numeric vector of class \code{treat} with a \code{"treat.type"} attribute of \code{"censoring"}. Missing values are preserved; any value other than 0 or 1 throws an error.
+\code{x} coerced to a 0/1 numeric vector of class \code{treat} (see \link[cobalt:treat-class]{cobalt::treat}) with a \code{"treat.type"} attribute of \code{"censoring"}. Missing values are preserved; any value other than 0 or 1 throws an error.
 
 Inside a formula the marker is stripped before the formula is processed, so \code{.cens()} is not actually evaluated there and the treatment name remains that of the indicator itself (e.g., \code{C} rather than \code{.cens(C)}).
 }
 \description{
 \code{.cens()} marks a variable as a censoring indicator rather than a treatment, requesting inverse probability of censoring weights (IPCW). It is most often used on the left side of a formula supplied to \code{\link[=weightit]{weightit()}} or in the \code{formula.list} of \code{\link[=weightitMSM]{weightitMSM()}}, as in \code{.cens(C) ~ x1 + x2}. It can also be called directly to tag a variable for use with the lower-level interfaces \code{\link[=weightit.fit]{weightit.fit()}} and \code{\link[=get_w_from_ps]{get_w_from_ps()}}.
+
+This is \pkg{cobalt}'s \code{\link[cobalt:.cens]{cobalt::.cens()}}, re-exported. \pkg{cobalt} defines it because \code{\link[cobalt:bal.tab]{cobalt::bal.tab()}} needs the same marker to assess a censoring model's balance; there is one function, so an indicator tagged with either package attached is the same object and is accepted by both.
 }
 \details{
 Censoring is treated as its own treatment type, distinct from binary, multi-category, and continuous treatments. Weights are estimated only for the units still under observation, and are those that make the covariate distribution of the uncensored units match that of the full at-risk sample. Formally, for \eqn{e(X) = P(C = 1 | X)}, the weights are \eqn{(1 - e(X))^{-1}} for units with \eqn{C = 0} and exactly 0 for units with \eqn{C = 1}.
@@ -50,9 +52,9 @@ The survival convention is used: \code{1} means the unit is \emph{censored} (dro
 
 Because the target of a censoring model is the full at-risk sample rather than another treatment group, balance is assessed by comparing the weighted uncensored units against that sample.
 
-Recent versions of \CRANpkg{cobalt} do this directly: \code{\link[cobalt:bal.tab]{cobalt::bal.tab()}} accepts a \code{weightit} object fit with a censoring model, as well as a \code{weightitMSM} object with censoring among its time points, and produces the comparison described above for each. See \code{cobalt::class-bal.tab.cens}.
+\code{\link[cobalt:bal.tab]{cobalt::bal.tab()}} does this directly: it accepts a \code{weightit} object fit with a censoring model, as well as a \code{weightitMSM} object with censoring among its time points, and produces the comparison described above for each. See \code{cobalt::class-bal.tab.cens}.
 
-With an older \pkg{cobalt}, the comparison has to be built by hand, since \code{bal.tab()} would reject a point-treatment censoring object (every censored unit has a weight of 0, leaving one "treatment group" with no weight) and a \code{weightitMSM} object with censoring (which leaves missing values in the later treatments). Stacking the two samples produces the same quantity:
+The same quantity can also be built by hand, by stacking the two samples into a binary pseudo-treatment:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{u <- which(W$treat == 0)
 bal.tab(rbind(covs[u, ], covs),
@@ -61,7 +63,7 @@ bal.tab(rbind(covs[u, ], covs),
         estimand = "ATT", s.d.denom = "treated")
 }\if{html}{\out{</div>}}
 
-The "Control" group is then the weighted uncensored sample and the "Treated" group the full at-risk sample, so \code{Diff.Adj} is the quantity the weights are designed to zero out. For a \code{weightitMSM} object, use the \code{at.risk} component, which has one column per time point, to restrict each model to the units that were under observation when it was fit:
+The "Control" group is then the weighted uncensored sample and the "Treated" group the full at-risk sample, so \code{Diff.Adj} is the quantity the weights are designed to zero out. For a \code{weightitMSM} object, the \code{at.risk} component, which has one column per time point, restricts each model to the units that were under observation when it was fit:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{ar <- W$at.risk[, "A_3"]
 bal.tab(A_3 ~ X1_2 + X2_2 + A_2, data = data[ar, ],
@@ -97,5 +99,5 @@ all.equal(get_w_from_ps(Wc$ps, treat = C),
           Wc$weights, check.attributes = FALSE)
 }
 \seealso{
-\code{\link[=weightit]{weightit()}} and \code{\link[=weightitMSM]{weightitMSM()}} for estimating censoring weights; \code{\link{.weightit_methods}} for which methods support them.
+\code{\link[=weightit]{weightit()}} and \code{\link[=weightitMSM]{weightitMSM()}} for estimating censoring weights; \code{\link{.weightit_methods}} for which methods support them; \code{\link[cobalt:.cens]{cobalt::.cens()}} for the function itself and \code{cobalt::class-bal.tab.cens} for the balance output.
 }

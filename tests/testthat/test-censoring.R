@@ -54,7 +54,7 @@ test_that(".cens() is detected, stripped, and tagged", {
   expect_identical(attr(t.0$treat, "treat.name"), "C")
   expect_identical(get_treat_type(t.0$treat), "censoring")
 
-  # `[.treat` preserves the type through subsetting
+  # `[` on a `treat` (cobalt's method) preserves the type through subsetting
   expect_identical(get_treat_type(t.c$treat[1:10]), "censoring")
 })
 
@@ -1754,7 +1754,7 @@ test_that("newer cobalt assesses censoring balance directly", {
   # cobalt gained direct support for censoring models, so the hand-built comparisons
   # in the test above are no longer required; they are kept there because they are
   # what works on the version currently on CRAN.
-  skip_if_not_installed("cobalt", "4.6.3.9002")
+  skip_if_not_installed("cobalt", "5.0.0")
 
   dp <- make_cens_data()
   Wp <- weightit(.cens(C) ~ X1 + X2 + X3, data = dp, method = "ebal")

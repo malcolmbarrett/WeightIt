@@ -1,6 +1,7 @@
 ## To Do
 * Create function for estimating treatment effects to remove marginaleffects as dependency (possibly in a new package)
 * Implement RieszBoost for GBM weighting
+* Drop `"cobalt.treat"` from `.treat_classes` in `R/treat.R`, once *cobalt* registers its `[` method on `treat` rather than on `cobalt.treat`. It is on `cobalt.treat` only because *WeightIt* 2.0.0 registered a competing `[.treat`; *cobalt* cannot move it while that version is the one on CRAN. See `cobalt/_dev/cens-transition.md`.
 
 ## Larger future directions
 
@@ -22,6 +23,6 @@
 
 ### Diagnostics and testing
 
-* **Target-based balance assessment.** Done in *cobalt* 4.6.3+, which compares the weighted uncensored units against the at-risk sample and handles a censoring model sitting among longitudinal treatments. Requires that release; `DESCRIPTION` still pins the placeholder `cobalt (>= 4.6.1)` and `test-censoring.R` the placeholder `4.6.3.9002`. Both need the real version number once *cobalt* is on CRAN.
+* ~~**Target-based balance assessment.**~~ Done in *cobalt* 5.0.0, which compares the weighted uncensored units against the at-risk sample and handles a censoring model sitting among longitudinal treatments. `DESCRIPTION` and `test-censoring.R` now name that version rather than a placeholder.
 * **A fast test tier that runs on CRAN.** 277 of 286 `test_that()` blocks are behind `skip_on_cran()`, so CRAN effectively runs 9 of them. A small fast subset that always runs would catch platform-specific breakage that currently only surfaces locally.
 * **Coverage in CI**, with the `NOT_CRAN=true` and non-parallel caveats baked in (see below) so the number is meaningful.

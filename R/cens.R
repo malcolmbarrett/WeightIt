@@ -3,7 +3,17 @@
 #' @description
 #' `.cens()` marks a variable as a censoring indicator rather than a treatment, requesting inverse probability of censoring weights (IPCW). It is most often used on the left side of a formula supplied to [weightit()] or in the `formula.list` of [weightitMSM()], as in `.cens(C) ~ x1 + x2`. It can also be called directly to tag a variable for use with the lower-level interfaces [weightit.fit()] and [get_w_from_ps()].
 #'
+#' This is \pkg{cobalt}'s [cobalt::.cens()], re-exported. \pkg{cobalt} defines it because [cobalt::bal.tab()] needs the same marker to assess a censoring model's balance; there is one function, so an indicator tagged with either package attached is the same object and is accepted by both.
+#'
 #' @param x a censoring indicator: a numeric variable taking only the values 0 (still under observation) and 1 (censored), a logical variable, or a factor with levels `0`/`1` or `FALSE`/`TRUE`.
+#'
+#' @usage .cens(x)
+#'
+#' @name .cens
+#' @aliases .cens
+#'
+#' @importFrom cobalt .cens
+#' @export .cens
 #'
 #' @details
 #' Censoring is treated as its own treatment type, distinct from binary, multi-category, and continuous treatments. Weights are estimated only for the units still under observation, and are those that make the covariate distribution of the uncensored units match that of the full at-risk sample. Formally, for \eqn{e(X) = P(C = 1 | X)}, the weights are \eqn{(1 - e(X))^{-1}} for units with \eqn{C = 0} and exactly 0 for units with \eqn{C = 1}.
@@ -36,9 +46,9 @@
 #' @section Assessing balance:
 #' Because the target of a censoring model is the full at-risk sample rather than another treatment group, balance is assessed by comparing the weighted uncensored units against that sample.
 #'
-#' Recent versions of \CRANpkg{cobalt} do this directly: [cobalt::bal.tab()] accepts a `weightit` object fit with a censoring model, as well as a `weightitMSM` object with censoring among its time points, and produces the comparison described above for each. See `cobalt::class-bal.tab.cens`.
+#' [cobalt::bal.tab()] does this directly: it accepts a `weightit` object fit with a censoring model, as well as a `weightitMSM` object with censoring among its time points, and produces the comparison described above for each. See `cobalt::class-bal.tab.cens`.
 #'
-#' With an older \pkg{cobalt}, the comparison has to be built by hand, since `bal.tab()` would reject a point-treatment censoring object (every censored unit has a weight of 0, leaving one "treatment group" with no weight) and a `weightitMSM` object with censoring (which leaves missing values in the later treatments). Stacking the two samples produces the same quantity:
+#' The same quantity can also be built by hand, by stacking the two samples into a binary pseudo-treatment:
 #'
 #' ```
 #' u <- which(W$treat == 0)
@@ -48,7 +58,7 @@
 #'         estimand = "ATT", s.d.denom = "treated")
 #' ```
 #'
-#' The "Control" group is then the weighted uncensored sample and the "Treated" group the full at-risk sample, so `Diff.Adj` is the quantity the weights are designed to zero out. For a `weightitMSM` object, use the `at.risk` component, which has one column per time point, to restrict each model to the units that were under observation when it was fit:
+#' The "Control" group is then the weighted uncensored sample and the "Treated" group the full at-risk sample, so `Diff.Adj` is the quantity the weights are designed to zero out. For a `weightitMSM` object, the `at.risk` component, which has one column per time point, restricts each model to the units that were under observation when it was fit:
 #'
 #' ```
 #' ar <- W$at.risk[, "A_3"]
@@ -57,12 +67,12 @@
 #' ```
 #'
 #' @returns
-#' `x` coerced to a 0/1 numeric vector of class `treat` with a `"treat.type"` attribute of `"censoring"`. Missing values are preserved; any value other than 0 or 1 throws an error.
+#' `x` coerced to a 0/1 numeric vector of class `treat` (see [cobalt::treat-class]) with a `"treat.type"` attribute of `"censoring"`. Missing values are preserved; any value other than 0 or 1 throws an error.
 #'
 #' Inside a formula the marker is stripped before the formula is processed, so `.cens()` is not actually evaluated there and the treatment name remains that of the indicator itself (e.g., `C` rather than `.cens(C)`).
 #'
 #' @seealso
-#' [weightit()] and [weightitMSM()] for estimating censoring weights; [`.weightit_methods`] for which methods support them.
+#' [weightit()] and [weightitMSM()] for estimating censoring weights; [`.weightit_methods`] for which methods support them; [cobalt::.cens()] for the function itself and `cobalt::class-bal.tab.cens` for the balance output.
 #'
 #' @examples
 #' data("msmdata")
@@ -90,20 +100,4 @@
 #'
 #' all.equal(get_w_from_ps(Wc$ps, treat = C),
 #'           Wc$weights, check.attributes = FALSE)
-
-#' @export
-.cens <- function(x) {
-  arg::arg_supplied(x)
-
-  treat.name <- deparse1(substitute(x))
-
-  #`.make_cens_treat()` validates the 0/1 domain here, at the call site, rather
-  #than deep inside a fitting function. The `"treat"` class is what makes the
-  #tag survive subsetting (see `[.treat`), which the `by` and longitudinal
-  #risk-set paths rely on.
-  out <- as.treat(.make_cens_treat(x), censoring = TRUE)
-
-  attr(out, "treat.name") <- treat.name
-
-  out
-}
+NULL

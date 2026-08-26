@@ -1,15 +1,21 @@
 #Treatment class
-#' @exportS3Method `[` treat
-`[.treat` <- function(x, ...) {
-  y <- NextMethod("[")
-  attr(y, "treat.type") <- .attr(x, "treat.type")
-  attr(y, "treat.name") <- .attr(x, "treat.name")
-  attr(y, "treated") <- .attr(x, "treated")
-  attr(y, "control") <- .attr(x, "control")
 
-  class(y) <- class(x)
+#The class every processed treatment carries. It is cobalt's (see
+#`cobalt::treat-class`), and so is the `[` method that preserves the attributes across
+#subsetting: cobalt registers it and WeightIt does not, so there is one method for one
+#class and no chance of the two packages overwriting each other's.
+#
+#`cobalt.treat` is the class the method is currently registered on, and `treat` is the
+#shared contract. Both are set, so the object is indistinguishable from one cobalt
+#processed itself and dispatch finds the method whichever of the two names cobalt
+#registers it under. It goes first because a multi-category treatment is a factor
+#underneath, and `[.factor` would otherwise win and drop every attribute.
+.treat_classes <- c("cobalt.treat", "treat")
 
-  y
+.set_treat_class <- function(x) {
+  class(x) <- unique(c(.treat_classes, class(x)))
+
+  x
 }
 
 as.treat <- function(x, process = NULL, censoring = NULL) {
@@ -36,7 +42,5 @@ as.treat <- function(x, process = NULL, censoring = NULL) {
     attr(x, "treat.name") <- treat.name
   }
 
-  class(x) <- unique(c("treat", class(x)))
-
-  x
+  .set_treat_class(x)
 }
