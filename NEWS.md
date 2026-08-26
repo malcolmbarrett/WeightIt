@@ -57,6 +57,8 @@ WeightIt News and Updates
 
 * Relatedly, the `[` method for `treat` objects is now *cobalt*'s as well. *WeightIt* tags its processed treatments with *cobalt*'s `treat` class (see `cobalt::treat-class`) and no longer registers a competing method for it. This is internal; no user-facing behavior changes.
 
+* Fixed a bug in which only a bare `.cens()` marker was recognized as one, so a censoring model written as `WeightIt::.cens(C) ~ x1 + x2` was named after the whole call rather than after the indicator: the model was named `WeightIt::.cens(C)` rather than `C`, which in `weightitMSM()` is also how the time point is identified in `summary()` and in `cobalt::bal.tab()`. The weights were correct either way. What marks a censoring model is now the indicator `.cens()` returns rather than the syntax that produced it, so any way of naming the same function works, including `cobalt::.cens()` and a local alias, as does supplying a variable that was tagged ahead of time.
+
 # `WeightIt` 2.0.0
 
 Several new features have been added, described in more detail below. In particular, these are censoring weights estimation and random effects in propensity score models.

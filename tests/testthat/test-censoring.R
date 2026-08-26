@@ -58,6 +58,52 @@ test_that(".cens() is detected, stripped, and tagged", {
   expect_identical(get_treat_type(t.c$treat[1:10]), "censoring")
 })
 
+test_that("a censoring model is recognized however the marker is spelled", {
+  d <- make_cens_data()
+
+  # What marks a censoring model is the indicator `.cens()` returns, not the syntax
+  # that produced it, so every way of naming the same function works -- including ones
+  # no syntactic match could enumerate. Getting this wrong is not merely cosmetic: an
+  # unrecognized marker is left unstripped, so the treatment is named after the call
+  # rather than after the indicator, and in `weightitMSM()` that name is what
+  # identifies the time point.
+  mycens <- WeightIt::.cens
+
+  for (f in list(.cens(C) ~ X1 + X2,
+                 WeightIt::.cens(C) ~ X1 + X2,
+                 cobalt::.cens(C) ~ X1 + X2,
+                 mycens(C) ~ X1 + X2)) {
+    t.c <- get_covs_and_treat_from_formula2(f, d)
+
+    expect_identical(attr(t.c$treat, "treat.name"), "C")
+    expect_identical(get_treat_type(t.c$treat), "censoring")
+  }
+
+  # An indicator tagged ahead of time is recognized too, and keeps the name it is
+  # given here rather than the one `.cens()` recorded
+  dt <- d
+  dt$Ctag <- .cens(d$C)
+
+  t.t <- get_covs_and_treat_from_formula2(Ctag ~ X1 + X2, dt)
+  expect_identical(attr(t.t$treat, "treat.name"), "Ctag")
+  expect_identical(get_treat_type(t.t$treat), "censoring")
+
+  # A treatment that is not an indicator is unaffected, and a call on the left keeps
+  # its own name
+  t.l <- get_covs_and_treat_from_formula2(log(X1 + 20) ~ X2, d)
+  expect_identical(attr(t.l$treat, "treat.name"), "log(X1 + 20)")
+  expect_null(get_treat_type(t.l$treat))
+
+  # `.is_cens_formula()` now answers only "can the marker be stripped rather than
+  # evaluated", which is what lets a bare `.cens()` work unattached. A qualified
+  # spelling names something that resolves, so it is evaluated instead.
+  expect_true(.is_cens_formula(.cens(C) ~ X1))
+  expect_false(.is_cens_formula(WeightIt::.cens(C) ~ X1))
+  expect_false(.is_cens_formula(stats::lm(C) ~ X1))
+  expect_false(.is_cens_formula(C ~ X1))
+  expect_false(.is_cens_formula(~ X1))
+})
+
 test_that(".cens() validates the indicator", {
   d <- make_cens_data()
 
@@ -1160,6 +1206,23 @@ msm_cens_formulas <- list(A_1 ~ X1_0 + X2_0,
                           A_2 ~ X1_1 + X2_1 + A_1,
                           .cens(C_2) ~ X1_1 + X2_1 + A_1,
                           A_3 ~ X1_2 + X2_2 + A_2)
+
+test_that("an alternative marker spelling names its time point the same way", {
+  d <- make_msm_cens_data()
+
+  W <- weightitMSM(msm_cens_formulas, data = d, method = "glm")
+
+  for (lhs in list(quote(WeightIt::.cens(C_2)), quote(cobalt::.cens(C_2)))) {
+    other <- msm_cens_formulas
+    other[[3L]] <- rlang::new_formula(lhs, quote(X1_1 + X2_1 + A_1))
+
+    Wo <- weightitMSM(other, data = d, method = "glm")
+
+    expect_identical(names(Wo$treat.list), c("A_1", "A_2", "C_2", "A_3"))
+    expect_identical(names(Wo$treat.list), names(W$treat.list))
+    expect_equal(Wo$weights, W$weights)
+  }
+})
 
 test_that("weightitMSM separates censoring from treatment models", {
   d <- make_msm_cens_data()

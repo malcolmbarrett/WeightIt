@@ -720,6 +720,13 @@ get_varnames <- function(expr) {
 #`terms()`/`model.frame()`, so that `treat.name` is the indicator's own name
 #(`"C"`, not `".cens(C)"`) and the indicator is otherwise processed like any
 #other treatment.
+#Whether the marker can be stripped rather than evaluated. This is the only thing the
+#syntax is asked about: `weightit(.cens(C) ~ x)` has to work whether or not the package
+#is attached, and a bare `.cens` is exactly the spelling that may not resolve in the
+#formula's environment. Any other spelling -- `WeightIt::.cens(C)`, `cobalt::.cens(C)`,
+#an alias -- names something that does resolve, so it can simply be evaluated, and the
+#indicator it returns says for itself that it is a censoring indicator. Whether a model
+#is a censoring model is therefore read off the treatment's `treat.type`, not off this.
 .is_cens_formula <- function(f) {
   if (!rlang::is_formula(f, lhs = TRUE)) {
     return(FALSE)
@@ -770,11 +777,13 @@ get_covs_and_treat_from_formula2 <- function(f, data = NULL, sep = "", ...) {
   arg::arg_formula(f, .arg = "formula")
   arg::arg_string(sep)
 
-  #Strip the `.cens()` marker (if present) before `terms()` sees it; the treat
-  #returned below is tagged with treat.type = "censoring".
-  censoring <- .is_cens_formula(f)
+  #Strip a bare `.cens()` marker before `terms()` sees it, so that it need not resolve
+  #in the formula's environment. A marker left in place is evaluated instead and returns
+  #an indicator already tagged as censoring; `censoring` below is settled from the
+  #treatment itself, so both routes arrive at the same place.
+  stripped.cens.marker <- .is_cens_formula(f)
 
-  if (censoring) {
+  if (stripped.cens.marker) {
     f <- .uncens_formula(f)
   }
 
@@ -841,6 +850,13 @@ get_covs_and_treat_from_formula2 <- function(f, data = NULL, sep = "", ...) {
     if (resp.var.okay) {
       treat.name <- names(test)[1L]
       treat <- model.response(test)
+
+      #The model frame names the response by the whole expression that produced it. When
+      #that expression is a call, a treatment that carries a name of its own knows
+      #better: `.cens(C)` records `C`, the indicator, where the model frame has the call.
+      if (is.call(rlang::f_lhs(tt))) {
+        treat.name <- .attr(treat, "treat.name") %or% treat.name
+      }
     }
     else if (is_not_null(treat)) {
       tt <- delete.response(tt)
@@ -851,6 +867,13 @@ get_covs_and_treat_from_formula2 <- function(f, data = NULL, sep = "", ...) {
       arg::err('the given response variable, {.var {resp}}, is not a variable in {.or {c("data", "the global environment")[c(data.specified, TRUE)]}}')
     }
   }
+
+  #What makes a model a censoring model is the treatment: `.cens()` returns an indicator
+  #that carries the type, and that is what every other part of the package reads. The
+  #marker having been stripped above is the one case where the treatment cannot say so
+  #itself, because stripping is what kept it from being evaluated.
+  censoring <- stripped.cens.marker ||
+    identical(get_treat_type(treat), "censoring")
 
   #Check if RHS variables exist
   tt.covs <- delete.response(tt)
@@ -1100,9 +1123,7 @@ assign_treat_type <- function(treat, use.multi = FALSE, censoring = NULL) {
   else if (use.multi || is.character(treat) || is.factor(treat)) {
     treat.type <- "multinomial"
 
-    if (!inherits(treat, "processed.treat")) {
-      treat <- factor(treat)
-    }
+    treat <- factor(treat)
   }
   else {
     treat.type <- "continuous"
