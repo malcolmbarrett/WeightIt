@@ -3,6 +3,9 @@
 \name{.weightit_methods}
 \alias{.weightit_methods}
 \title{Weighting methods}
+\format{
+A named list with one component per weighting method, named for the method's canonical name (the value accepted by \code{method}). Each component is itself a named list of the components described in Details.
+}
 \usage{
 .weightit_methods
 }

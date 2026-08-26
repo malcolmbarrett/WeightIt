@@ -26,6 +26,9 @@
 #' \item{`plot.weightit_ok`}{a logical for whether `plot()` can be used on the `weightit` output with the method.}
 #' }
 #'
+#' @format
+#' A named list with one component per weighting method, named for the method's canonical name (the value accepted by `method`). Each component is itself a named list of the components described in Details.
+#'
 #' @seealso
 #' [weightit()] and [weightitMSM()] for how the methods are used. Also see the individual methods pages for information on whether and how each option can be used.
 #'

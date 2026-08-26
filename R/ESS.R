@@ -10,6 +10,9 @@
 #' @details
 #' The ESS is calculated as \eqn{(\sum w)^2/\sum w^2}. It is invariant to multiplicative scaling of the weights (i.e., multiplying all weights by a nonzero scalar).
 #'
+#' @returns
+#' A single number, the effective sample size. For non-negative weights it lies between 1 and `length(w)`, and equals `length(w)` only when all the weights are equal. It is `NA` if any weight is missing.
+#'
 #' @seealso [summary.weightit()]
 #'
 #' @references

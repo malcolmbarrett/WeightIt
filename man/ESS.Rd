@@ -9,6 +9,9 @@ ESS(w)
 \arguments{
 \item{w}{a vector of weights.}
 }
+\value{
+A single number, the effective sample size. For non-negative weights it lies between 1 and \code{length(w)}, and equals \code{length(w)} only when all the weights are equal. It is \code{NA} if any weight is missing.
+}
 \description{
 Computes the effective sample size (ESS) of a weighted sample,
 which represents the size of an unweighted sample with approximately the same
