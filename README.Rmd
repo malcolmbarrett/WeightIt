@@ -30,7 +30,7 @@ To install and load *WeightIt*, use the code below:
 
 ```{r, eval = FALSE}
 #CRAN version
-pak::pak("WeightIt")
+install.packages("WeightIt")
 
 #Development version
 pak::pak("ngreifer/WeightIt")
